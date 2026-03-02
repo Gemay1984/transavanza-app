@@ -111,3 +111,66 @@
   color: var(--text-secondary);
   font-size: 1rem;
 }
+
+/* =========================================
+   RESPONSIVE DESIGN (Mobile & Tablets)
+   ========================================= */
+
+@media (max-width: 900px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-glass);
+    padding: 16px 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+  }
+
+  .logo-container {
+    padding: 0 16px;
+    margin-bottom: 0;
+  }
+
+  .nav-links {
+    flex-direction: row;
+    padding: 0 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .nav-item {
+    width: auto;
+    padding: 8px 16px;
+  }
+
+  /* Make grid containers stack on mobile */
+  .main-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  /* Helper classes to stack grid views in JSX */
+  .responsive-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+}

@@ -102,7 +102,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
     const displayedDrivers = isAdmin ? drivers : drivers.filter(d => d.name === currentUser?.name);
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr 2fr' : '1.5fr 1fr', gap: '24px' }}>
+        <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1fr 2fr' : '1.5fr 1fr', gap: '24px' }}>
             {/* Columna Izquierda: Registro (Solo Admin) o Permisos GPS (Todos) */}
 
             {isAdmin ? (

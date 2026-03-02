@@ -43,7 +43,6 @@ function App() {
 
   // Estado que ahora será manejado por Supabase
   const [drivers, setDrivers] = useState([]);
-  const [passengers, setPassengers] = useLocalStorage('lamala_passengers', []); // Pasajeros puede seguir local o migrarse luego
   const [serviceRequests, setServiceRequests] = useState([]);
   const [messages, setMessages] = useState([]);
 
@@ -262,7 +261,7 @@ function App() {
                 <p className="page-subtitle">Información centralizada de clientes y destinos</p>
               </div>
             </div>
-            <PassengerRegistration passengers={passengers} setPassengers={setPassengers} />
+            <PassengerRegistration currentUser={user} />
           </div>
         )}
 

@@ -1,7 +1,10 @@
-import { useState } from 'react';
-import { UserPlus, UserCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { UserPlus, UserCheck, Download } from 'lucide-react';
+import { supabase } from '../supabaseClient';
+import * as XLSX from 'xlsx';
 
-export default function PassengerRegistration({ passengers, setPassengers }) {
+export default function PassengerRegistration({ currentUser }) {
+    const [passengers, setPassengers] = useState([]);
     const [newPassenger, setNewPassenger] = useState({
         nombres: '',
         apellidos: '',
@@ -10,25 +13,73 @@ export default function PassengerRegistration({ passengers, setPassengers }) {
     });
     const [notification, setNotification] = useState(null);
 
-    const handleSubmit = (e) => {
+    // Fetch inicial y Suscripción
+    useEffect(() => {
+        const fetchPassengers = async () => {
+            const { data } = await supabase
+                .from('passengers')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (data) setPassengers(data);
+        };
+        fetchPassengers();
+
+        const channel = supabase.channel('passengers-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'passengers' }, payload => {
+                fetchPassengers();
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, []);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!newPassenger.nombres || !newPassenger.cc) return;
 
-        const passenger = {
-            id: Date.now(),
-            ...newPassenger,
+        // Insert into Supabase
+        const { error } = await supabase.from('passengers').insert([{
+            nombres: newPassenger.nombres,
+            apellidos: newPassenger.apellidos,
+            cc: newPassenger.cc,
+            destino: newPassenger.destino,
+            driver_name: currentUser?.name || 'Admin',
             timestamp: new Date().toLocaleTimeString()
-        };
+        }]);
 
-        setPassengers([passenger, ...passengers]);
+        if (error) {
+            console.error(error);
+            alert("Error al guardar pasajero");
+            return;
+        }
+
         setNewPassenger({ nombres: '', apellidos: '', cc: '', destino: '' });
 
         setNotification('Pasajero registrado exitosamente');
         setTimeout(() => setNotification(null), 3000);
     };
 
+    const exportToExcel = () => {
+        if (passengers.length === 0) return alert("No hay datos para exportar");
+
+        // Prepare simplified data for excel
+        const excelData = passengers.map(p => ({
+            "Fecha/Hora": new Date(p.created_at || Date.now()).toLocaleString(),
+            "Nombres": p.nombres,
+            "Apellidos": p.apellidos,
+            "Cédula": p.cc,
+            "Destino": p.destino,
+            "Conductor": p.driver_name
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Pasajeros");
+        XLSX.writeFile(workbook, `Registro_Pasajeros_${new Date().toLocaleDateString()}.xlsx`);
+    };
+
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+        <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
 
             {/* Formulario de Registro */}
             <div className="glass-panel" style={{ padding: '24px' }}>
@@ -104,11 +155,16 @@ export default function PassengerRegistration({ passengers, setPassengers }) {
 
             {/* Lista de Registros */}
             <div className="glass-panel" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                    <h3>Pasajeros Transportados Hoy</h3>
-                    <span style={{ background: 'var(--bg-primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        Total: {passengers.length}
-                    </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h3>Pasajeros Transportados Hoy</h3>
+                        <span style={{ background: 'var(--bg-primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                            Total: {passengers.length}
+                        </span>
+                    </div>
+                    <button onClick={exportToExcel} className="glass-button success" style={{ fontSize: '0.9rem', padding: '8px 16px' }}>
+                        <Download size={16} /> Descargar Excel
+                    </button>
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>

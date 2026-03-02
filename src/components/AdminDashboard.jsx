@@ -43,7 +43,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     const occupiedDrivers = drivers.filter(d => d.status === 'Ocupado');
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', animation: 'fadeIn 0.5s ease' }}>
+        <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', animation: 'fadeIn 0.5s ease' }}>
 
             {/* Columna Izquierda: Mapa, Nueva Solicitud y Lista */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -82,7 +82,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                             {drivers.map(driver => (
                                 <Marker
                                     key={driver.id}
-                                    position={[driver.location.lat, driver.location.lng]}
+                                    position={[driver.lat || 4.6097, driver.lng || -74.0817]}
                                     icon={L.divIcon({
                                         className: 'custom-leaflet-marker',
                                         html: `<div style="
@@ -106,7 +106,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                 </div>
 
                 {/* Formulario Nueva Solicitud y Tablero de Solicitudes */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '24px' }}>
+                <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '24px' }}>
 
                     {/* Crear Solicitud */}
                     <div className="glass-panel" style={{ padding: '24px' }}>
