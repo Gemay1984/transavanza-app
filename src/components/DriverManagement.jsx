@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { MapPin, CheckCircle, XCircle, ShieldAlert, BellRing, MessageSquare, Send, Navigation } from 'lucide-react';
+import { MapPin, CheckCircle, XCircle, ShieldAlert, BellRing, MessageSquare, Send, Navigation, History, Flag } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function DriverManagement({ drivers, setDrivers, currentUser, isAdmin, serviceRequests = [], setServiceRequests, messages, setMessages }) {
     const [newDriver, setNewDriver] = useState({ name: '', username: '', vehicle: '', phone: '', password: '' });
     const [locationPermission, setLocationPermission] = useState(null);
     const [newMessage, setNewMessage] = useState("");
+    const [driverHistory, setDriverHistory] = useState([]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -20,6 +21,21 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
 
         setNewMessage("");
     };
+
+    // Load driver history
+    useEffect(() => {
+        if (!isAdmin && currentUser?.name) {
+            supabase
+                .from('completed_services')
+                .select('*')
+                .eq('driver_name', currentUser.name)
+                .order('id', { ascending: false })
+                .limit(30)
+                .then(({ data }) => {
+                    if (data) setDriverHistory(data);
+                });
+        }
+    }, [currentUser, isAdmin]);
 
     useEffect(() => {
         // En Supabase el registro ya lo hicimos en el Login, así que aquí solo necesitamos 
@@ -258,8 +274,12 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                     <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                         <span>Placa: {driver.vehicle}</span>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={14} color={driver.status === 'Disponible' ? "var(--accent-secondary)" : "var(--danger)"} />
-                                            {driver.status === 'Disponible' ? "Transmitiendo" : "Ocupado / Inactivo"}
+                                            <MapPin size={14} color={
+                                                driver.status === 'Disponible' ? "var(--accent-secondary)" :
+                                                    driver.status === 'En Servicio' ? "var(--warning)" : "var(--danger)"
+                                            } />
+                                            {driver.status === 'Disponible' ? "En línea - GPS activo" :
+                                                driver.status === 'En Servicio' ? "En ruta de servicio" : "Inactivo / Ocupado"}
                                         </span>
                                     </div>
                                 </div>
@@ -332,75 +352,127 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 </button>
                                             )}
                                         </div>
-                                        <button
-                                            className="glass-button success"
-                                            style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-                                            disabled={locationPermission !== 'granted'} // Prevent accepting if no GPS
-                                            onClick={async () => {
-                                                const currentDriverState = drivers.find(d => d.id === currentUser.id);
-                                                if (!currentDriverState || currentDriverState.status !== 'Disponible') {
-                                                    alert("Solo puedes aceptar servicios si tu estado es 'Disponible'. Por favor, cambia tu estado primero.");
-                                                    return;
-                                                }
+                                        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                            <button
+                                                className="glass-button success"
+                                                style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                                                disabled={locationPermission !== 'granted'} // Prevent accepting if no GPS
+                                                onClick={async () => {
+                                                    const currentDriverState = drivers.find(d => d.id === currentUser.id);
+                                                    if (!currentDriverState || currentDriverState.status !== 'Disponible') {
+                                                        alert("Solo puedes aceptar servicios si tu estado es 'Disponible'. Por favor, cambia tu estado primero.");
+                                                        return;
+                                                    }
 
-                                                // Cambiar estado del conductor a 'En Servicio'
-                                                await supabase
-                                                    .from('drivers')
-                                                    .update({ status: 'En Servicio' })
-                                                    .eq('id', currentUser.id);
+                                                    // Cambiar estado del conductor a 'En Servicio'
+                                                    await supabase
+                                                        .from('drivers')
+                                                        .update({ status: 'En Servicio' })
+                                                        .eq('id', currentUser.id);
 
-                                                // Avisar al administrador
-                                                await supabase
-                                                    .from('messages')
-                                                    .insert([{
-                                                        text: `✅ El conductor ${currentUser.name} ha ACEPTADO el servicio en ${req.location}.`,
-                                                        sender: "Sistema",
-                                                        recipient: "Administrador",
-                                                        time: new Date().toLocaleTimeString()
-                                                    }]);
+                                                    // Avisar al administrador
+                                                    await supabase
+                                                        .from('messages')
+                                                        .insert([{
+                                                            text: `✅ El conductor ${currentUser.name} ha ACEPTADO el servicio en ${req.location}.`,
+                                                            sender: "Sistema",
+                                                            recipient: "Administrador",
+                                                            time: new Date().toLocaleTimeString()
+                                                        }]);
 
-                                                // Variables para notificar al cliente (si aplica)
-                                                let clientName = null;
-                                                const refMatch = req.location.match(/\(Ref: (.*?) -/);
-                                                if (refMatch && refMatch[1]) {
-                                                    clientName = refMatch[1].trim();
-                                                }
+                                                    // Variables para notificar al cliente (si aplica)
+                                                    let clientName = null;
+                                                    const refMatch = req.location.match(/\(Ref: (.*?) -/);
+                                                    if (refMatch && refMatch[1]) {
+                                                        clientName = refMatch[1].trim();
+                                                    }
 
-                                                // Guardar registro histórico del servicio prestado
-                                                await supabase
-                                                    .from('completed_services')
-                                                    .insert([{
-                                                        type: req.type,
-                                                        location: req.location,
-                                                        driver_name: currentUser.name,
-                                                        accepted_time: new Date().toLocaleTimeString()
-                                                    }]);
+                                                    // Guardar registro histórico del servicio prestado
+                                                    await supabase
+                                                        .from('completed_services')
+                                                        .insert([{
+                                                            type: req.type,
+                                                            location: req.location,
+                                                            driver_name: currentUser.name,
+                                                            accepted_time: new Date().toLocaleTimeString()
+                                                        }]);
 
-                                                // Eliminar solicitud de la cola
-                                                await supabase
-                                                    .from('service_requests')
-                                                    .delete()
-                                                    .eq('id', req.id);
+                                                    // Eliminar solicitud de la cola
+                                                    await supabase
+                                                        .from('service_requests')
+                                                        .delete()
+                                                        .eq('id', req.id);
 
-                                                // Alertar al pasajero/cliente si extrajimos su nombre
-                                                if (clientName) {
-                                                    await supabase.from('messages').insert([{
-                                                        text: `🚗 ¡CONDUCTOR ASIGNADO!\nConductor: ${currentUser.name}\nPlaca: ${currentDriverState.vehicle}`,
-                                                        sender: "Sistema",
-                                                        recipient: clientName,
-                                                        time: new Date().toLocaleTimeString()
-                                                    }]);
-                                                }
+                                                    // Alertar al pasajero/cliente si extrajimos su nombre
+                                                    if (clientName) {
+                                                        await supabase.from('messages').insert([{
+                                                            text: `🚗 ¡CONDUCTOR ASIGNADO!\nConductor: ${currentUser.name}\nPlaca: ${currentDriverState.vehicle}`,
+                                                            sender: "Sistema",
+                                                            recipient: clientName,
+                                                            time: new Date().toLocaleTimeString()
+                                                        }]);
+                                                    }
 
-                                                alert(`¡Has aceptado el servicio en ${req.location}!\nTu estado cambió a "Ocupado".`);
-                                            }}
-                                        >
-                                            <CheckCircle size={16} /> Aceptar
-                                        </button>
+                                                    alert(`¡Has aceptado el servicio en ${req.location}!\nTu estado cambió a "En Servicio".`);
+                                                }}
+                                            >
+                                                <CheckCircle size={16} /> Aceptar
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             )}
                         </div>
+                    </div>
+                )}
+
+
+                {/* Botón Finalizar Servicio - Solo cuando conductor está 'En Servicio' */}
+                {!isAdmin && currentUser && drivers.find(d => d.id === currentUser.id)?.status === 'En Servicio' && (
+                    <div style={{
+                        marginTop: '24px', padding: '20px',
+                        background: 'rgba(253,203,110,0.08)', border: '2px solid var(--warning)',
+                        borderRadius: '16px', textAlign: 'center'
+                    }}>
+                        <p style={{ color: 'var(--warning)', fontWeight: 600, marginBottom: '8px', fontSize: '1rem' }}>
+                            🟡 Actualmente en ruta de servicio
+                        </p>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
+                            Cuando llegues al destino y entregues el servicio, presiona el botón para marcarlo como completado.
+                        </p>
+                        <button
+                            className="glass-button"
+                            style={{
+                                borderColor: 'var(--success)', color: 'var(--success)',
+                                padding: '14px 28px', fontSize: '1rem', fontWeight: 700,
+                                display: 'inline-flex', alignItems: 'center', gap: '8px'
+                            }}
+                            onClick={async () => {
+                                if (!window.confirm('¿Confirmas que el servicio fue completado?')) return;
+
+                                // Cambiar estado a Disponible de nuevo
+                                await supabase
+                                    .from('drivers')
+                                    .update({ status: 'Disponible' })
+                                    .eq('id', currentUser.id);
+
+                                // Aviso al admin
+                                await supabase.from('messages').insert([{
+                                    text: `✅ El conductor ${currentUser.name} ha FINALIZADO su servicio y está Disponible nuevamente.`,
+                                    sender: "Sistema",
+                                    recipient: "Administrador",
+                                    time: new Date().toLocaleTimeString()
+                                }]);
+
+                                // Reload history
+                                const { data } = await supabase.from('completed_services').select('*').eq('driver_name', currentUser.name).order('id', { ascending: false }).limit(30);
+                                if (data) setDriverHistory(data);
+
+                                alert('✅ ¡Servicio finalizado exitosamente! Ahora estás Disponible.');
+                            }}
+                        >
+                            <Flag size={18} /> Finalizar Servicio Completado
+                        </button>
                     </div>
                 )}
             </div>
@@ -451,6 +523,51 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                             <Send size={18} />
                         </button>
                     </form>
+                </div>
+            )}
+
+            {/* Historial de viajes del conductor */}
+            {!isAdmin && currentUser && (
+                <div className="glass-panel" style={{ padding: '24px', gridColumn: '1 / -1', marginTop: '0' }}>
+                    <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <History size={20} color="var(--accent-primary)" />
+                        Mi Historial de Servicios
+                        <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
+                            {driverHistory.length} registros
+                        </span>
+                    </h3>
+
+                    {driverHistory.length === 0 ? (
+                        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>No tienes servicios registrados aún.</p>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px 12px' }}>Tipo</th>
+                                        <th style={{ padding: '8px 12px' }}>Recogida</th>
+                                        <th style={{ padding: '8px 12px' }}>Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {driverHistory.map((svc, i) => (
+                                        <tr key={svc.id || i} style={{
+                                            borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                            background: i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'
+                                        }}>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>{svc.type}</span>
+                                            </td>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {svc.location?.split('| GPS:')[0]}
+                                            </td>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{svc.accepted_time}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 

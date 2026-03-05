@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { BellRing, MessageSquare, Send, CheckCircle, Navigation, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BellRing, MessageSquare, Send, CheckCircle, Navigation, Plus, BarChart2, Filter, Users, Truck } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../supabaseClient';
@@ -9,9 +9,29 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     const [newMessage, setNewMessage] = useState("");
     const [recipient, setRecipient] = useState("Todos");
     const [selectedDrivers, setSelectedDrivers] = useState({}); // Mapeo { requestId: driverId }
+    const [completedServices, setCompletedServices] = useState([]);
+    const [filterDriver, setFilterDriver] = useState('');
+    const [filterType, setFilterType] = useState('');
 
     // Formulario de nueva solicitud
     const [newRequest, setNewRequest] = useState({ type: 'Estandar', location: '' });
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            const { data } = await supabase.from('completed_services').select('*').order('id', { ascending: false }).limit(100);
+            if (data) setCompletedServices(data);
+        };
+        fetchHistory();
+
+        // Real-time updates to history
+        const channel = supabase.channel('admin-history')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'completed_services' }, (payload) => {
+                setCompletedServices(prev => [payload.new, ...prev]);
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, []);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -42,10 +62,35 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     };
 
     const activeDrivers = drivers.filter(d => d.status === 'Disponible');
-    const occupiedDrivers = drivers.filter(d => d.status === 'Ocupado');
+    const occupiedDrivers = drivers.filter(d => d.status === 'Ocupado' || d.status === 'En Servicio');
+    const inServiceDrivers = drivers.filter(d => d.status === 'En Servicio');
+
+    const filteredHistory = completedServices
+        .filter(s => !filterDriver || s.driver_name === filterDriver)
+        .filter(s => !filterType || s.type === filterType);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+
+            {/* Tarjetas de Estadisticas */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
+                {[
+                    { label: 'Disponibles', value: activeDrivers.length, icon: <Users size={20} />, color: 'var(--success)' },
+                    { label: 'En Servicio', value: inServiceDrivers.length, icon: <Truck size={20} />, color: 'var(--warning)' },
+                    { label: 'Pendientes', value: serviceRequests.length, icon: <BellRing size={20} />, color: 'var(--accent-primary)' },
+                    { label: 'Completados Hoy', value: completedServices.length, icon: <CheckCircle size={20} />, color: 'var(--accent-secondary)' },
+                ].map((stat, i) => (
+                    <div key={i} className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ color: stat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '12px', background: `${stat.color}20` }}>
+                            {stat.icon}
+                        </div>
+                        <div>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '2px' }}>{stat.label}</p>
+                            <p style={{ fontSize: '1.6rem', fontWeight: 700, color: stat.color, lineHeight: 1 }}>{stat.value}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
             {/* Sección Superior: Mapa, Solicitudes y Mensajería */}
             <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', animation: 'fadeIn 0.5s ease' }}>
 
@@ -339,7 +384,76 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                 </div>
             </div>
 
-            {/* Nueva Sección Inferior: Registro de Pasajeros incrustado */}
+            {/* Historial de Servicios con Filtros */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                        <Filter size={20} color="var(--accent-primary)" />
+                        Historial de Servicios
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>{filteredHistory.length} registros</span>
+                    </h3>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <select
+                            className="glass-input"
+                            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                            value={filterDriver}
+                            onChange={e => setFilterDriver(e.target.value)}
+                        >
+                            <option value="">Todos los conductores</option>
+                            {[...new Set(completedServices.map(s => s.driver_name))].map(name => (
+                                <option key={name} value={name} style={{ background: 'var(--bg-primary)' }}>{name}</option>
+                            ))}
+                        </select>
+                        <select
+                            className="glass-input"
+                            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                            value={filterType}
+                            onChange={e => setFilterType(e.target.value)}
+                        >
+                            <option value="">Todos los tipos</option>
+                            <option value="Estandar" style={{ background: 'var(--bg-primary)' }}>Estándar</option>
+                            <option value="VIP" style={{ background: 'var(--bg-primary)' }}>VIP</option>
+                            <option value="Carga" style={{ background: 'var(--bg-primary)' }}>Carga / Mensajería</option>
+                        </select>
+                    </div>
+                </div>
+
+                {filteredHistory.length === 0 ? (
+                    <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '24px' }}>No hay servicios completados aún.</p>
+                ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)', textAlign: 'left' }}>
+                                    <th style={{ padding: '10px 12px' }}>Tipo</th>
+                                    <th style={{ padding: '10px 12px' }}>Conductor</th>
+                                    <th style={{ padding: '10px 12px' }}>Recogida</th>
+                                    <th style={{ padding: '10px 12px' }}>Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredHistory.map((svc, i) => (
+                                    <tr key={svc.id || i} style={{
+                                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                        background: i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent'
+                                    }}>
+                                        <td style={{ padding: '10px 12px' }}>
+                                            <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>{svc.type}</span>
+                                        </td>
+                                        <td style={{ padding: '10px 12px', fontWeight: 500 }}>{svc.driver_name}</td>
+                                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {svc.location?.split('| GPS:')[0]}
+                                        </td>
+                                        <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{svc.accepted_time}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Registro Global de Pasajeros */}
             <div className="animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
                 <h2 className="page-title" style={{ marginBottom: '16px', fontSize: '1.4rem' }}>Registro Global de Pasajeros</h2>
                 <PassengerRegistration currentUser={currentUser} />
