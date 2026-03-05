@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, CheckCircle, XCircle, ShieldAlert, BellRing, MessageSquare, Send } from 'lucide-react';
+import { MapPin, CheckCircle, XCircle, ShieldAlert, BellRing, MessageSquare, Send, Navigation } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function DriverManagement({ drivers, setDrivers, currentUser, isAdmin, serviceRequests = [], setServiceRequests, messages, setMessages }) {
@@ -316,7 +316,21 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>{req.type}</span>
                                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{req.time}</span>
                                             </div>
-                                            <h4 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{req.location}</h4>
+                                            <h4 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{req.location.split('| GPS:')[0]}</h4>
+
+                                            {req.location.includes('GPS: ') && (
+                                                <button
+                                                    onClick={() => window.open(req.location.split('GPS: ')[1], '_blank')}
+                                                    style={{
+                                                        marginTop: '8px', padding: '6px 12px', fontSize: '0.85rem',
+                                                        background: 'rgba(9, 132, 227, 0.1)', border: '1px solid var(--accent-secondary)',
+                                                        color: 'var(--accent-secondary)', borderRadius: '6px', cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500'
+                                                    }}
+                                                >
+                                                    <Navigation size={14} /> 🗺️ Navegar a ruta
+                                                </button>
+                                            )}
                                         </div>
                                         <button
                                             className="glass-button success"

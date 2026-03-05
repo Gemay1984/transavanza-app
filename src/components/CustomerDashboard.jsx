@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Navigation2, CheckCircle, Clock } from 'lucide-react';
+import { MapPin, Navigation2, CheckCircle, Clock, Map } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function CustomerDashboard({ currentUser, serviceRequests, messages = [] }) {
@@ -10,6 +10,30 @@ export default function CustomerDashboard({ currentUser, serviceRequests, messag
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+    const handleGetLocation = () => {
+        setIsGettingLocation(true);
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                setRequestForm({
+                    ...requestForm,
+                    location: `Mi ubicación GPS Registrada ✅ | GPS: https://maps.google.com/?q=${lat},${lng}`
+                });
+                setIsGettingLocation(false);
+            }, (error) => {
+                let msg = 'Error obteniendo ubicación.';
+                if (error.code === 1) msg = "Permiso de ubicación denegado.";
+                alert(msg);
+                setIsGettingLocation(false);
+            }, { timeout: 10000 });
+        } else {
+            alert("Geolocalización no soportada en tu navegador.");
+            setIsGettingLocation(false);
+        }
+    };
 
     // Check if the user has an active request
     // We assume the service_requests table might not have a full relation to a 'customers' table right now,
@@ -88,6 +112,22 @@ export default function CustomerDashboard({ currentUser, serviceRequests, messag
                                 required
                             />
                         </div>
+                        <button
+                            type="button"
+                            onClick={handleGetLocation}
+                            disabled={isGettingLocation}
+                            style={{
+                                marginTop: '8px', padding: '10px', fontSize: '0.9rem',
+                                background: 'transparent', border: '1px dashed var(--accent-primary)',
+                                color: 'var(--accent-primary)', borderRadius: '8px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s'
+                            }}
+                            onMouseOver={(e) => e.target.style.background = 'rgba(108, 92, 231, 0.1)'}
+                            onMouseOut={(e) => e.target.style.background = 'transparent'}
+                        >
+                            <Map size={16} />
+                            {isGettingLocation ? 'Buscando GPS...' : 'Usar mi ubicación actual exacta'}
+                        </button>
                     </div>
 
                     <div className="input-group">
@@ -176,6 +216,11 @@ export default function CustomerDashboard({ currentUser, serviceRequests, messag
                                 <div>
                                     <span style={{ fontSize: '0.8rem', color: 'var(--accent-secondary)', fontWeight: 600 }}>EN COLA DE ASIGNACIÓN</span>
                                     <p style={{ marginTop: '4px', fontWeight: 500 }}>{req.type}</p>
+                                    {req.location.includes('GPS:') && (
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--accent-primary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <MapPin size={12} /> Ubicación compartida
+                                        </p>
+                                    )}
                                 </div>
                                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{req.time}</span>
                             </div>

@@ -176,7 +176,21 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                     <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>{req.type}</span>
                                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{req.time}</span>
                                                 </div>
-                                                <h4 style={{ fontSize: '1.05rem' }}>{req.location}</h4>
+                                                <h4 style={{ fontSize: '1.05rem' }}>{req.location.split('| GPS:')[0]}</h4>
+
+                                                {req.location.includes('GPS: ') && (
+                                                    <button
+                                                        onClick={() => window.open(req.location.split('GPS: ')[1], '_blank')}
+                                                        style={{
+                                                            marginTop: '8px', padding: '4px 8px', fontSize: '0.8rem',
+                                                            background: 'transparent', border: '1px solid var(--accent-secondary)',
+                                                            color: 'var(--accent-secondary)', borderRadius: '6px', cursor: 'pointer',
+                                                            display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500'
+                                                        }}
+                                                    >
+                                                        <Navigation size={12} /> Ver Mapa
+                                                    </button>
+                                                )}
                                             </div>
                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                 <select
