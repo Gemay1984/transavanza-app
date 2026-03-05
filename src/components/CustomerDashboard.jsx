@@ -35,6 +35,35 @@ export default function CustomerDashboard({ currentUser, serviceRequests, messag
         }
     };
 
+    // Detect if pasted text is a Google Maps / WhatsApp shared location
+    const handleLocationPaste = (e) => {
+        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+
+        // Pattern: Google Maps link with ?q=lat,lng or @lat,lng
+        const patterns = [
+            /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,           // ?q=lat,lng
+            /@(-?\d+\.\d+),(-?\d+\.\d+)/,                   // @lat,lng  (Google Maps)
+            /maps\.apple\.com.*[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/, // Apple Maps
+            /^(-?\d+\.\d+),\s*(-?\d+\.\d+)$/               // raw "lat, lng" text
+        ];
+
+        for (const pattern of patterns) {
+            const match = pasted.match(pattern);
+            if (match) {
+                e.preventDefault();
+                const lat = match[1];
+                const lng = match[2];
+                const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+                setRequestForm(prev => ({
+                    ...prev,
+                    location: `Ubicación compartida por WhatsApp 📍 | GPS: ${mapsUrl}`
+                }));
+                return;
+            }
+        }
+        // If no pattern matched, let the default paste happen normally
+    };
+
     // Check if the user has an active request
     // We assume the service_requests table might not have a full relation to a 'customers' table right now,
     // so we can match by checking if the location or some metadata contains their name.
@@ -106,9 +135,10 @@ export default function CustomerDashboard({ currentUser, serviceRequests, messag
                                 type="text"
                                 className="glass-input"
                                 style={{ paddingLeft: '40px' }}
-                                placeholder="Ej: Calle Principal 123"
+                                placeholder="Escribe tu dirección o pega el enlace de WhatsApp"
                                 value={requestForm.location}
                                 onChange={(e) => setRequestForm({ ...requestForm, location: e.target.value })}
+                                onPaste={handleLocationPaste}
                                 required
                             />
                         </div>
@@ -128,6 +158,9 @@ export default function CustomerDashboard({ currentUser, serviceRequests, messag
                             <Map size={16} />
                             {isGettingLocation ? 'Buscando GPS...' : 'Usar mi ubicación actual exacta'}
                         </button>
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '6px', textAlign: 'center' }}>
+                            📲 ¿Te enviaron la ubicación por WhatsApp? Pega el enlace directamente en el campo de arriba y lo detectaremos automáticamente.
+                        </p>
                     </div>
 
                     <div className="input-group">
