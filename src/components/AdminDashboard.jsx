@@ -259,10 +259,16 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                         const driverToAssign = drivers.find(d => d.id === driverId);
                                                         if (driverToAssign) {
                                                             // Actualizar el estado del conductor a 'En Servicio' en Supabase
-                                                            await supabase
+                                                            const { error: statusError } = await supabase
                                                                 .from('drivers')
                                                                 .update({ status: 'En Servicio' })
                                                                 .eq('id', driverToAssign.id);
+
+                                                            if (statusError) {
+                                                                console.error('Error updating status:', statusError);
+                                                                alert(`Error al cambiar estado: ${statusError.message}`);
+                                                                return;
+                                                            }
 
                                                             // Enviar mensaje automático al conductor en Supabase
                                                             await supabase
