@@ -294,7 +294,8 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                                     type: req.type,
                                                                     location: req.location,
                                                                     driver_name: driverToAssign.name,
-                                                                    accepted_time: new Date().toLocaleTimeString()
+                                                                    accepted_time: new Date().toLocaleTimeString(),
+                                                                    start_timestamp: new Date().toISOString()
                                                                 }]);
 
                                                             // Eliminar la solicitud asignada
@@ -450,6 +451,11 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                         <td style={{ padding: '10px 12px', fontWeight: 500 }}>{svc.driver_name}</td>
                                         <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {svc.location?.split('| GPS:')[0]}
+                                            {svc.location?.includes('GPS: ') && (
+                                                <a href={svc.location.split('GPS: ')[1]} target="_blank" rel="noreferrer" title="Ver en mapa" style={{ marginLeft: '8px', color: 'var(--accent-secondary)' }}>
+                                                    <Navigation size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                                                </a>
+                                            )}
                                         </td>
                                         <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{svc.accepted_time}</td>
                                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>

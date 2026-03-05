@@ -25,15 +25,33 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
     // Load driver history
     useEffect(() => {
         if (!isAdmin && currentUser?.name) {
-            supabase
-                .from('completed_services')
-                .select('*')
-                .eq('driver_name', currentUser.name)
-                .order('id', { ascending: false })
-                .limit(30)
-                .then(({ data }) => {
-                    if (data) setDriverHistory(data);
-                });
+            const fetchHistory = async () => {
+                const { data } = await supabase
+                    .from('completed_services')
+                    .select('*')
+                    .eq('driver_name', currentUser.name)
+                    .order('id', { ascending: false })
+                    .limit(30);
+                if (data) setDriverHistory(data);
+            };
+
+            fetchHistory();
+
+            // Real-time updates to history
+            const channel = supabase.channel(`driver-history-${currentUser.name}`)
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'completed_services', filter: `driver_name=eq.${currentUser.name}` },
+                    (payload) => {
+                        if (payload.eventType === 'INSERT') {
+                            setDriverHistory(prev => [payload.new, ...prev]);
+                        } else if (payload.eventType === 'UPDATE') {
+                            setDriverHistory(prev => prev.map(item => item.id === payload.new.id ? payload.new : item));
+                        }
+                    }
+                )
+                .subscribe();
+
+            return () => supabase.removeChannel(channel);
         }
     }, [currentUser, isAdmin]);
 
@@ -429,79 +447,128 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
 
 
                 {/* Botón Finalizar Servicio - Solo cuando conductor está 'En Servicio' */}
-                {!isAdmin && currentUser && drivers.find(d => d.id === currentUser.id)?.status === 'En Servicio' && (
-                    <div style={{
-                        marginTop: '24px', padding: '20px',
-                        background: 'rgba(253,203,110,0.08)', border: '2px solid var(--warning)',
-                        borderRadius: '16px', textAlign: 'center'
-                    }}>
-                        <p style={{ color: 'var(--warning)', fontWeight: 600, marginBottom: '8px', fontSize: '1rem' }}>
-                            🟡 Actualmente en ruta de servicio
-                        </p>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
-                            Cuando llegues al destino y entregues el servicio, presiona el botón para marcarlo como completado.
-                        </p>
-                        <button
-                            className="glass-button"
-                            style={{
-                                borderColor: 'var(--success)', color: 'var(--success)',
-                                padding: '14px 28px', fontSize: '1rem', fontWeight: 700,
-                                display: 'inline-flex', alignItems: 'center', gap: '8px'
-                            }}
-                            onClick={async () => {
-                                if (!window.confirm('¿Confirmas que el servicio fue completado?')) return;
+                {!isAdmin && currentUser && drivers.find(d => d.id === currentUser.id)?.status === 'En Servicio' && (() => {
+                    const activeService = driverHistory.find(s => !s.end_time);
+                    return (
+                        <div style={{
+                            marginTop: '24px', padding: '24px',
+                            background: 'rgba(253,203,110,0.1)', border: '2px solid var(--warning)',
+                            borderRadius: '16px', textAlign: 'center',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+                        }}>
+                            <p style={{ color: 'var(--warning)', fontWeight: 800, marginBottom: '12px', fontSize: '1.1rem', letterSpacing: '0.5px' }}>
+                                🟡 SERVICIO EN CURSO
+                            </p>
 
-                                const endTime = new Date();
+                            {activeService ? (
+                                <div style={{
+                                    background: 'rgba(255,255,255,0.05)',
+                                    padding: '16px',
+                                    borderRadius: '12px',
+                                    marginBottom: '20px',
+                                    textAlign: 'left',
+                                    border: '1px solid rgba(253,203,110,0.2)'
+                                }}>
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
+                                        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', marginTop: '2px' }}>{activeService.location?.split('| GPS:')[0]}</p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '20px' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Tipo:</label>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>{activeService.type}</p>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Iniciado:</label>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{activeService.accepted_time}</p>
+                                        </div>
+                                    </div>
 
-                                // Buscar el último registro activo de este conductor (sin end_time)
-                                const { data: activeRecord } = await supabase
-                                    .from('completed_services')
-                                    .select('*')
-                                    .eq('driver_name', currentUser.name)
-                                    .is('end_time', null)
-                                    .order('id', { ascending: false })
-                                    .limit(1)
-                                    .single();
+                                    {activeService.location?.includes('GPS: ') && (
+                                        <button
+                                            onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')}
+                                            className="glass-button"
+                                            style={{
+                                                marginTop: '16px', width: '100%',
+                                                background: 'var(--accent-gradient)', border: 'none',
+                                                padding: '10px', fontSize: '0.9rem', color: 'white'
+                                            }}
+                                        >
+                                            <Navigation size={16} /> Abrir GPS / Mapa
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
+                                    Cargando detalles del servicio...
+                                </p>
+                            )}
 
-                                if (activeRecord?.start_timestamp) {
-                                    const startTime = new Date(activeRecord.start_timestamp);
-                                    const diffMs = endTime - startTime;
-                                    const diffMins = Math.round(diffMs / 60000);
-                                    const durationText = diffMins < 60
-                                        ? `${diffMins} min`
-                                        : `${Math.floor(diffMins / 60)}h ${diffMins % 60}min`;
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
+                                Al completar el servicio, presiona el botón de abajo para quedar "Disponible" nuevamente.
+                            </p>
+                            <button
+                                className="glass-button"
+                                style={{
+                                    borderColor: 'var(--success)', color: 'var(--success)',
+                                    padding: '14px 28px', fontSize: '1rem', fontWeight: 700,
+                                    display: 'inline-flex', alignItems: 'center', gap: '8px'
+                                }}
+                                onClick={async () => {
+                                    if (!window.confirm('¿Confirmas que el servicio fue completado?')) return;
 
-                                    await supabase
+                                    const endTime = new Date();
+
+                                    // Buscar el último registro activo de este conductor (sin end_time)
+                                    const { data: activeRecord } = await supabase
                                         .from('completed_services')
-                                        .update({ end_time: endTime.toISOString(), duration: durationText })
-                                        .eq('id', activeRecord.id);
-                                }
+                                        .select('*')
+                                        .eq('driver_name', currentUser.name)
+                                        .is('end_time', null)
+                                        .order('id', { ascending: false })
+                                        .limit(1)
+                                        .single();
 
-                                // Cambiar estado a Disponible de nuevo
-                                await supabase
-                                    .from('drivers')
-                                    .update({ status: 'Disponible' })
-                                    .eq('id', currentUser.id);
+                                    if (activeRecord?.start_timestamp) {
+                                        const startTime = new Date(activeRecord.start_timestamp);
+                                        const diffMs = endTime - startTime;
+                                        const diffMins = Math.round(diffMs / 60000);
+                                        const durationText = diffMins < 60
+                                            ? `${diffMins} min`
+                                            : `${Math.floor(diffMins / 60)}h ${diffMins % 60}min`;
 
-                                // Aviso al admin
-                                await supabase.from('messages').insert([{
-                                    text: `✅ El conductor ${currentUser.name} ha FINALIZADO su servicio y está Disponible nuevamente.`,
-                                    sender: "Sistema",
-                                    recipient: "Administrador",
-                                    time: new Date().toLocaleTimeString()
-                                }]);
+                                        await supabase
+                                            .from('completed_services')
+                                            .update({ end_time: endTime.toISOString(), duration: durationText })
+                                            .eq('id', activeRecord.id);
+                                    }
 
-                                // Reload history
-                                const { data } = await supabase.from('completed_services').select('*').eq('driver_name', currentUser.name).order('id', { ascending: false }).limit(30);
-                                if (data) setDriverHistory(data);
+                                    // Cambiar estado a Disponible de nuevo
+                                    await supabase
+                                        .from('drivers')
+                                        .update({ status: 'Disponible' })
+                                        .eq('id', currentUser.id);
 
-                                alert('✅ ¡Servicio finalizado exitosamente! Ahora estás Disponible.');
-                            }}
-                        >
-                            <Flag size={18} /> Finalizar Servicio Completado
-                        </button>
-                    </div>
-                )}
+                                    // Aviso al admin
+                                    await supabase.from('messages').insert([{
+                                        text: `✅ El conductor ${currentUser.name} ha FINALIZADO su servicio y está Disponible nuevamente.`,
+                                        sender: "Sistema",
+                                        recipient: "Administrador",
+                                        time: new Date().toLocaleTimeString()
+                                    }]);
+
+                                    // Reload history
+                                    const { data } = await supabase.from('completed_services').select('*').eq('driver_name', currentUser.name).order('id', { ascending: false }).limit(30);
+                                    if (data) setDriverHistory(data);
+
+                                    alert('✅ ¡Servicio finalizado exitosamente! Ahora estás Disponible.');
+                                }}
+                            >
+                                <Flag size={18} /> Finalizar Servicio Completado
+                            </button>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Columna Derecha para Conductores: Mensajería */}
@@ -588,6 +655,11 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                             </td>
                                             <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {svc.location?.split('| GPS:')[0]}
+                                                {svc.location?.includes('GPS: ') && (
+                                                    <a href={svc.location.split('GPS: ')[1]} target="_blank" rel="noreferrer" title="Ver en mapa" style={{ marginLeft: '8px', color: 'var(--accent-secondary)' }}>
+                                                        <Navigation size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                                                    </a>
+                                                )}
                                             </td>
                                             <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{svc.accepted_time}</td>
                                             <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
