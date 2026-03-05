@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/transavanza-app/sw.js', { scope: '/transavanza-app/' })})}
