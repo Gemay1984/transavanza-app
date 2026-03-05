@@ -394,7 +394,8 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                             type: req.type,
                                                             location: req.location,
                                                             driver_name: currentUser.name,
-                                                            accepted_time: new Date().toLocaleTimeString()
+                                                            accepted_time: new Date().toLocaleTimeString(),
+                                                            start_timestamp: new Date().toISOString()
                                                         }]);
 
                                                     // Eliminar solicitud de la cola
@@ -449,6 +450,32 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                             }}
                             onClick={async () => {
                                 if (!window.confirm('¿Confirmas que el servicio fue completado?')) return;
+
+                                const endTime = new Date();
+
+                                // Buscar el último registro activo de este conductor (sin end_time)
+                                const { data: activeRecord } = await supabase
+                                    .from('completed_services')
+                                    .select('*')
+                                    .eq('driver_name', currentUser.name)
+                                    .is('end_time', null)
+                                    .order('id', { ascending: false })
+                                    .limit(1)
+                                    .single();
+
+                                if (activeRecord?.start_timestamp) {
+                                    const startTime = new Date(activeRecord.start_timestamp);
+                                    const diffMs = endTime - startTime;
+                                    const diffMins = Math.round(diffMs / 60000);
+                                    const durationText = diffMins < 60
+                                        ? `${diffMins} min`
+                                        : `${Math.floor(diffMins / 60)}h ${diffMins % 60}min`;
+
+                                    await supabase
+                                        .from('completed_services')
+                                        .update({ end_time: endTime.toISOString(), duration: durationText })
+                                        .eq('id', activeRecord.id);
+                                }
 
                                 // Cambiar estado a Disponible de nuevo
                                 await supabase
@@ -547,6 +574,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                         <th style={{ padding: '8px 12px' }}>Tipo</th>
                                         <th style={{ padding: '8px 12px' }}>Recogida</th>
                                         <th style={{ padding: '8px 12px' }}>Hora</th>
+                                        <th style={{ padding: '8px 12px' }}>Duración</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -562,6 +590,12 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 {svc.location?.split('| GPS:')[0]}
                                             </td>
                                             <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{svc.accepted_time}</td>
+                                            <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                                {svc.duration
+                                                    ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>⏱ {svc.duration}</span>
+                                                    : <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>—</span>
+                                                }
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

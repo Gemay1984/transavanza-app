@@ -435,6 +435,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                     <th style={{ padding: '10px 12px' }}>Conductor</th>
                                     <th style={{ padding: '10px 12px' }}>Recogida</th>
                                     <th style={{ padding: '10px 12px' }}>Hora</th>
+                                    <th style={{ padding: '10px 12px' }}>Duración</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -451,6 +452,12 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                             {svc.location?.split('| GPS:')[0]}
                                         </td>
                                         <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{svc.accepted_time}</td>
+                                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                            {svc.duration
+                                                ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>⏱ {svc.duration}</span>
+                                                : <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>En curso...</span>
+                                            }
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
