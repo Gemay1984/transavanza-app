@@ -213,10 +213,10 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
 
                                                         const driverToAssign = drivers.find(d => d.id === driverId);
                                                         if (driverToAssign) {
-                                                            // Actualizar el estado del conductor a 'Ocupado' en Supabase
+                                                            // Actualizar el estado del conductor a 'En Servicio' en Supabase
                                                             await supabase
                                                                 .from('drivers')
-                                                                .update({ status: 'Ocupado' })
+                                                                .update({ status: 'En Servicio' })
                                                                 .eq('id', driverToAssign.id);
 
                                                             // Enviar mensaje automático al conductor en Supabase

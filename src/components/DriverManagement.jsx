@@ -343,10 +343,10 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                     return;
                                                 }
 
-                                                // Cambiar estado del conductor a 'Ocupado'
+                                                // Cambiar estado del conductor a 'En Servicio'
                                                 await supabase
                                                     .from('drivers')
-                                                    .update({ status: 'Ocupado' })
+                                                    .update({ status: 'En Servicio' })
                                                     .eq('id', currentUser.id);
 
                                                 // Avisar al administrador
