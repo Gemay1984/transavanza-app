@@ -27,6 +27,44 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
         // Pero en onLogin pasamos { role, name, id }, así que asumimos que currentUser.id existe
     }, [currentUser, isAdmin]);
 
+    // Wake Lock para evitar que la pantalla se apague y corte el GPS
+    useEffect(() => {
+        let wakeLock = null;
+        let cleanupVisibility = null;
+
+        const currentDriverStatus = drivers.find(d => d.id === currentUser?.id)?.status;
+        const isActiveState = currentDriverStatus === 'Disponible' || currentDriverStatus === 'En Servicio';
+
+        const requestWakeLock = async () => {
+            if ('wakeLock' in navigator && !isAdmin && isActiveState) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+
+                    const handleVisibilityChange = async () => {
+                        if (wakeLock !== null && document.visibilityState === 'visible') {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                        }
+                    };
+
+                    document.addEventListener('visibilitychange', handleVisibilityChange);
+                    cleanupVisibility = () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+                } catch (err) {
+                    console.log('Wake Lock request failed:', err.message);
+                }
+            }
+        };
+
+        requestWakeLock();
+
+        return () => {
+            if (cleanupVisibility) cleanupVisibility();
+            if (wakeLock) {
+                wakeLock.release().catch(() => { });
+            }
+        };
+    }, [drivers, currentUser, isAdmin]);
+
     // Solicitud de permisos GPS y Tracking continuo
     const requestGPSPermission = () => {
         if ('geolocation' in navigator) {
@@ -86,11 +124,9 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
         alert(`Conductor agregado.\nUsuario: ${newDriver.username}\nContraseña: ${newDriver.password}`);
     };
 
-    const toggleStatus = async (id) => {
+    const updateStatus = async (id, newStatus) => {
         const driverToUpdate = drivers.find(d => d.id === id);
         if (!driverToUpdate) return;
-
-        const newStatus = driverToUpdate.status === 'Disponible' ? 'Ocupado' : 'Disponible';
 
         await supabase
             .from('drivers')
@@ -179,6 +215,8 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                             </div>
                             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
                                 El administrador necesita tu ubicación en tiempo real para asignarte servicios. Por favor autoriza el uso de GPS.
+                                <br /><br />
+                                <strong style={{ color: 'var(--warning)' }}>Nota importante:</strong> Mantén esta pestaña abierta y en primer plano para asegurar que el sistema actualice tu posición sin interrupciones.
                             </p>
                             <button className="glass-button" onClick={requestGPSPermission} style={{ width: '100%', borderColor: 'var(--danger)', padding: '16px', fontSize: '1.1rem' }}>
                                 Permitir Rastreo GPS
@@ -226,15 +264,25 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                     </div>
                                 </div>
 
-                                <button
-                                    className={`glass-button ${driver.status === 'Disponible' ? 'success' : 'danger'}`}
-                                    onClick={() => toggleStatus(driver.id)}
-                                    disabled={!isAdmin && locationPermission !== 'granted'} // Un conductor sin GPS no puede ponerse disponible si es su primera vez, pero sí ocupado? 
-                                    style={{ padding: '12px 20px', minWidth: '140px' }}
+                                <select
+                                    className="glass-input"
+                                    value={driver.status}
+                                    onChange={(e) => updateStatus(driver.id, e.target.value)}
+                                    disabled={!isAdmin && locationPermission !== 'granted'}
+                                    style={{
+                                        padding: '8px 12px',
+                                        minWidth: '140px',
+                                        cursor: 'pointer',
+                                        fontWeight: '600',
+                                        border: `1px solid ${driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'}`,
+                                        background: driver.status === 'Disponible' ? 'rgba(0,184,148,0.1)' : driver.status === 'En Servicio' ? 'rgba(253,203,110,0.1)' : 'rgba(255,118,117,0.1)',
+                                        color: driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'
+                                    }}
                                 >
-                                    {driver.status === 'Disponible' ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                                    {driver.status}
-                                </button>
+                                    <option value="Disponible" style={{ background: 'var(--bg-primary)' }}>🟢 Disponible</option>
+                                    <option value="En Servicio" style={{ background: 'var(--bg-primary)' }}>🟡 En Servicio</option>
+                                    <option value="Ocupado" style={{ background: 'var(--bg-primary)' }}>🔴 Ocupado</option>
+                                </select>
                             </div>
                         ))
                     )}
@@ -275,13 +323,62 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                             style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                                             disabled={locationPermission !== 'granted'} // Prevent accepting if no GPS
                                             onClick={async () => {
-                                                // Update in Supabase
+                                                const currentDriverState = drivers.find(d => d.id === currentUser.id);
+                                                if (!currentDriverState || currentDriverState.status !== 'Disponible') {
+                                                    alert("Solo puedes aceptar servicios si tu estado es 'Disponible'. Por favor, cambia tu estado primero.");
+                                                    return;
+                                                }
+
+                                                // Cambiar estado del conductor a 'Ocupado'
+                                                await supabase
+                                                    .from('drivers')
+                                                    .update({ status: 'Ocupado' })
+                                                    .eq('id', currentUser.id);
+
+                                                // Avisar al administrador
+                                                await supabase
+                                                    .from('messages')
+                                                    .insert([{
+                                                        text: `✅ El conductor ${currentUser.name} ha ACEPTADO el servicio en ${req.location}.`,
+                                                        sender: "Sistema",
+                                                        recipient: "Administrador",
+                                                        time: new Date().toLocaleTimeString()
+                                                    }]);
+
+                                                // Variables para notificar al cliente (si aplica)
+                                                let clientName = null;
+                                                const refMatch = req.location.match(/\(Ref: (.*?) -/);
+                                                if (refMatch && refMatch[1]) {
+                                                    clientName = refMatch[1].trim();
+                                                }
+
+                                                // Guardar registro histórico del servicio prestado
+                                                await supabase
+                                                    .from('completed_services')
+                                                    .insert([{
+                                                        type: req.type,
+                                                        location: req.location,
+                                                        driver_name: currentUser.name,
+                                                        accepted_time: new Date().toLocaleTimeString()
+                                                    }]);
+
+                                                // Eliminar solicitud de la cola
                                                 await supabase
                                                     .from('service_requests')
                                                     .delete()
                                                     .eq('id', req.id);
 
-                                                alert(`¡Has aceptado el servicio en ${req.location}!`);
+                                                // Alertar al pasajero/cliente si extrajimos su nombre
+                                                if (clientName) {
+                                                    await supabase.from('messages').insert([{
+                                                        text: `🚗 ¡CONDUCTOR ASIGNADO!\nConductor: ${currentUser.name}\nPlaca: ${currentDriverState.vehicle}`,
+                                                        sender: "Sistema",
+                                                        recipient: clientName,
+                                                        time: new Date().toLocaleTimeString()
+                                                    }]);
+                                                }
+
+                                                alert(`¡Has aceptado el servicio en ${req.location}!\nTu estado cambió a "Ocupado".`);
                                             }}
                                         >
                                             <CheckCircle size={16} /> Aceptar

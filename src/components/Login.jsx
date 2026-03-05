@@ -11,6 +11,7 @@ export default function Login({ onLogin, drivers, setDrivers }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [vehicle, setVehicle] = useState('');
+    const [phone, setPhone] = useState('');
 
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
@@ -33,6 +34,16 @@ export default function Login({ onLogin, drivers, setDrivers }) {
             } else {
                 setError('Contraseña de administrador incorrecta.');
             }
+            return;
+        }
+
+        if (role === 'customer') {
+            if (!username || !phone) {
+                setError('Por favor indica tu nombre y teléfono de contacto.');
+                return;
+            }
+            requestNotificationPermission();
+            onLogin({ role: 'customer', name: username, phone: phone, id: `cust_${Date.now()}` });
             return;
         }
 
@@ -166,9 +177,20 @@ export default function Login({ onLogin, drivers, setDrivers }) {
                     <button
                         style={{
                             flex: 1, padding: '10px', borderRadius: '6px', border: 'none',
-                            background: role === 'driver' ? 'var(--accent-gradient)' : 'transparent',
+                            background: role === 'customer' ? 'var(--accent-gradient)' : 'transparent',
+                            color: role === 'customer' ? 'white' : 'var(--text-secondary)',
+                            transition: 'all 0.3s ease', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem'
+                        }}
+                        onClick={() => { setRole('customer'); setIsRegistering(false); setError(''); setSuccessMsg(''); }}
+                    >
+                        Pasajero
+                    </button>
+                    <button
+                        style={{
+                            flex: 1, padding: '10px', borderRadius: '6px', border: 'none',
+                            background: role === 'driver' ? 'var(--success)' : 'transparent',
                             color: role === 'driver' ? 'white' : 'var(--text-secondary)',
-                            transition: 'all 0.3s ease', cursor: 'pointer', fontWeight: 500
+                            transition: 'all 0.3s ease', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem'
                         }}
                         onClick={() => { setRole('driver'); setIsRegistering(false); setError(''); setSuccessMsg(''); }}
                     >
@@ -177,13 +199,13 @@ export default function Login({ onLogin, drivers, setDrivers }) {
                     <button
                         style={{
                             flex: 1, padding: '10px', borderRadius: '6px', border: 'none',
-                            background: role === 'admin' ? 'var(--accent-gradient)' : 'transparent',
+                            background: role === 'admin' ? 'var(--accent-primary)' : 'transparent', // distinct color
                             color: role === 'admin' ? 'white' : 'var(--text-secondary)',
-                            transition: 'all 0.3s ease', cursor: 'pointer', fontWeight: 500
+                            transition: 'all 0.3s ease', cursor: 'pointer', fontWeight: 500, fontSize: '0.85rem'
                         }}
                         onClick={() => { setRole('admin'); setIsRegistering(false); setError(''); setSuccessMsg(''); }}
                     >
-                        Administrador
+                        Admin
                     </button>
                 </div>
 
@@ -199,9 +221,9 @@ export default function Login({ onLogin, drivers, setDrivers }) {
                         </div>
                     )}
 
-                    {role === 'driver' && (
+                    {(role === 'driver' || role === 'customer') && (
                         <div className="input-group">
-                            <label>Usuario</label>
+                            <label>{role === 'customer' ? 'Tu Nombre' : 'Usuario'}</label>
                             <div style={{ position: 'relative' }}>
                                 <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
                                     <User size={18} />
@@ -210,9 +232,28 @@ export default function Login({ onLogin, drivers, setDrivers }) {
                                     type="text"
                                     className="glass-input"
                                     style={{ paddingLeft: '40px' }}
-                                    placeholder="Ej. juanperez"
+                                    placeholder={role === 'customer' ? 'Ej. Juan Pérez' : 'Ej. juanperez'}
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {role === 'customer' && (
+                        <div className="input-group animate-fade-in">
+                            <label>Teléfono (Para que el conductor te llame)</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
+                                    <BellRing size={18} />
+                                </span>
+                                <input
+                                    type="tel"
+                                    className="glass-input"
+                                    style={{ paddingLeft: '40px' }}
+                                    placeholder="Ej. 300 123 4567"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -237,7 +278,7 @@ export default function Login({ onLogin, drivers, setDrivers }) {
                         </div>
                     )}
 
-                    {!isRecovering && (
+                    {!isRecovering && role !== 'customer' && (
                         <div className="input-group">
                             <label>{role === 'admin' ? 'Contraseña Maestra' : 'Contraseña'}</label>
                             <div style={{ position: 'relative' }}>

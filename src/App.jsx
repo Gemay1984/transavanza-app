@@ -8,6 +8,7 @@ import './App.css';
 import AdminDashboard from './components/AdminDashboard';
 import DriverManagement from './components/DriverManagement';
 import PassengerRegistration from './components/PassengerRegistration';
+import CustomerDashboard from './components/CustomerDashboard';
 import Login from './components/Login';
 
 // Hook para localStorage
@@ -38,8 +39,13 @@ function App() {
   const [user, setUser] = useLocalStorage('lamala_user', null);
 
   // Si es conductor, forzarlo a la pestaña 'drivers' o 'passengers'
-  const initialTab = user?.role === 'admin' ? 'dashboard' : 'drivers';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // Si es cliente, su pestaña será 'customer'
+  const getInitialTab = (role) => {
+    if (role === 'admin') return 'dashboard';
+    if (role === 'customer') return 'customer';
+    return 'drivers';
+  };
+  const [activeTab, setActiveTab] = useState(user ? getInitialTab(user.role) : 'drivers');
 
   // Estado que ahora será manejado por Supabase
   const [drivers, setDrivers] = useState([]);
@@ -47,6 +53,7 @@ function App() {
   const [messages, setMessages] = useState([]);
 
   const [messagesCount, setMessagesCount] = useState(0);
+  const [requestsCount, setRequestsCount] = useState(0);
 
   // Fetch initial data from Supabase
   useEffect(() => {
@@ -84,6 +91,8 @@ function App() {
         console.error("Error fetching requests:", requestsError);
       } else {
         setServiceRequests(requestsData || []);
+        // Only update count on initial load or if we want to avoid triggering alarms on load
+        setRequestsCount(prev => prev === 0 && (requestsData || []).length > 0 ? (requestsData || []).length : prev);
       }
     };
 
@@ -104,46 +113,88 @@ function App() {
 
     const requestsChannel = supabase.channel('table-requests-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_requests' }, payload => {
-        fetchData();
+        if (payload.event === 'INSERT') {
+          setServiceRequests(prev => [...prev, payload.new]);
+        } else {
+          fetchData();
+        }
       })
       .subscribe();
+
+    window.addEventListener('focus', fetchData);
 
     return () => {
       supabase.removeChannel(driversChannel);
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(requestsChannel);
+      window.removeEventListener('focus', fetchData);
     };
   }, []);
 
   // Reproducir sonido de notificación cuando hay mensajes nuevos
   useEffect(() => {
     if (messages.length > messagesCount) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
+      if (messagesCount > 0) { // Evita sonar al inicio
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
 
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Tono alto (A5)
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volumen suave
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Tono alto (A5)
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volumen suave
 
-        oscillator.start();
-        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5); // Fade out rápido
-        oscillator.stop(audioCtx.currentTime + 0.5);
-      } catch (e) {
-        console.log("Audio de notificación bloqueado por el navegador", e);
+          oscillator.start();
+          gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5); // Fade out rápido
+          oscillator.stop(audioCtx.currentTime + 0.5);
+        } catch (e) {
+          console.log("Audio de notificación bloqueado por el navegador", e);
+        }
       }
       setMessagesCount(messages.length);
     }
   }, [messages, messagesCount]);
 
+  // Reproducir alarma fuerte para nuevos servicios pending
+  useEffect(() => {
+    if (serviceRequests.length > requestsCount) {
+      if (requestsCount > 0 || serviceRequests.length === 1) { // Evita sonar en carga masiva, suena si hay 1 y antes 0
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+          const playBeep = (freq, time, duration) => {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = 'square'; // Más notorio
+            oscillator.frequency.setValueAtTime(freq, time);
+            gainNode.gain.setValueAtTime(0.15, time); // Un poco más fuerte
+            oscillator.start(time);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, time + duration);
+            oscillator.stop(time + duration);
+          };
+
+          const now = audioCtx.currentTime;
+          playBeep(1000, now, 0.15);
+          playBeep(1200, now + 0.25, 0.15);
+          playBeep(1000, now + 0.5, 0.25);
+
+        } catch (e) {
+          console.log("Audio de alerta bloqueado", e);
+        }
+      }
+      setRequestsCount(serviceRequests.length);
+    }
+  }, [serviceRequests, requestsCount]);
+
   // Sincronizar tab si cambia el usuario
   useEffect(() => {
     if (user) {
-      setActiveTab(user.role === 'admin' ? 'dashboard' : 'drivers');
+      setActiveTab(getInitialTab(user.role));
     }
   }, [user]);
 
@@ -171,26 +222,37 @@ function App() {
         </div>
 
         <nav className="nav-links">
-          {isAdmin && (
+          {user.role === 'customer' ? (
             <button
-              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
+              className={`nav-item ${activeTab === 'customer' ? 'active' : ''}`}
+              onClick={() => setActiveTab('customer')}
             >
-              <LayoutDashboard size={20} /> Tablero Admin
+              <MapPin size={20} /> Pedir Servicio
             </button>
+          ) : (
+            <>
+              {isAdmin && (
+                <button
+                  className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('dashboard')}
+                >
+                  <LayoutDashboard size={20} /> Tablero Admin
+                </button>
+              )}
+              <button
+                className={`nav-item ${activeTab === 'drivers' ? 'active' : ''}`}
+                onClick={() => setActiveTab('drivers')}
+              >
+                <CarTaxiFront size={20} /> {isAdmin ? "Flota / Nuevo" : "Mi Estado GPS"}
+              </button>
+              <button
+                className={`nav-item ${activeTab === 'passengers' ? 'active' : ''}`}
+                onClick={() => setActiveTab('passengers')}
+              >
+                <Users size={20} /> Registro Pasajeros
+              </button>
+            </>
           )}
-          <button
-            className={`nav-item ${activeTab === 'drivers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('drivers')}
-          >
-            <CarTaxiFront size={20} /> {isAdmin ? "Flota / Nuevo" : "Mi Estado GPS"}
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'passengers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('passengers')}
-          >
-            <Users size={20} /> Registro Pasajeros
-          </button>
         </nav>
 
         {/* User profile / Logout at bottom */}
@@ -228,6 +290,7 @@ function App() {
               setServiceRequests={setServiceRequests}
               messages={messages}
               setMessages={setMessages}
+              currentUser={user}
             />
           </div>
         )}
@@ -253,7 +316,7 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'passengers' && (
+        {activeTab === 'passengers' && user.role !== 'customer' && (
           <div className="animate-fade-in">
             <div className="page-header">
               <div>
@@ -263,6 +326,10 @@ function App() {
             </div>
             <PassengerRegistration currentUser={user} />
           </div>
+        )}
+
+        {activeTab === 'customer' && (
+          <CustomerDashboard currentUser={user} serviceRequests={serviceRequests} messages={messages} />
         )}
 
       </main>
