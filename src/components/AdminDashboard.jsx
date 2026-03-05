@@ -135,9 +135,9 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                         icon={L.divIcon({
                                             className: 'custom-leaflet-marker',
                                             html: `<div style="
-                                            background: ${driver.status === 'Disponible' ? 'var(--success)' : 'var(--danger)'};
+                                            background: ${driver.status === 'Disponible' ? '#00b894' : driver.status === 'En Servicio' ? '#fdcb6e' : '#ff7675'};
                                             width: 16px; height: 16px; border-radius: 50%;
-                                            box-shadow: 0 0 10px ${driver.status === 'Disponible' ? 'var(--success)' : 'var(--danger)'};
+                                            box-shadow: 0 0 12px ${driver.status === 'Disponible' ? '#00b894' : driver.status === 'En Servicio' ? '#fdcb6e' : '#ff7675'};
                                             border: 2px solid white;"></div>
                                             <span style="position: absolute; top: 18px; left: -10px; font-size: 0.75rem; font-weight: 600; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px; white-space: nowrap; color: white;">${driver.vehicle}</span>
                                         `
