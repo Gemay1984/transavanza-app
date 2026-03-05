@@ -471,7 +471,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 }}>
                                     <div style={{ marginBottom: '10px' }}>
                                         <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
-                                        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', marginTop: '2px' }}>{activeService.location?.split('| GPS:')[0]}</p>
+                                        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', marginTop: '2px', wordBreak: 'break-word' }}>{activeService.location?.split('| GPS:')[0]}</p>
                                     </div>
                                     <div style={{ display: 'flex', gap: '20px' }}>
                                         <div>
@@ -597,7 +597,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 borderRadius: '8px',
                                 padding: '12px'
                             }}>
-                                <p style={{ fontSize: '0.95rem', marginBottom: '8px' }}>{msg.text}</p>
+                                <p style={{ fontSize: '0.95rem', marginBottom: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.text}</p>
                                 <span style={{ fontSize: '0.75rem', color: msg.sender === 'Administrador' || msg.sender === 'Administración' || msg.sender === 'Sistema' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
                                     {msg.sender} {msg.recipient && msg.recipient !== 'Todos' ? `(Privado)` : ''} • {msg.time}
                                 </span>
@@ -653,7 +653,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                             <td style={{ padding: '10px 12px' }}>
                                                 <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>{svc.type}</span>
                                             </td>
-                                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '280px' }}>
                                                 {svc.location?.split('| GPS:')[0]}
                                                 {svc.location?.includes('GPS: ') && (
                                                     <a href={svc.location.split('GPS: ')[1]} target="_blank" rel="noreferrer" title="Ver en mapa" style={{ marginLeft: '8px', color: 'var(--accent-secondary)' }}>
