@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { MapPin, CheckCircle, XCircle, ShieldAlert, BellRing, MessageSquare, Send, Navigation, History, Flag } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapPin, CheckCircle, XCircle, ShieldAlert, BellRing, MessageSquare, Send, Navigation, History, Flag, Trash2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function DriverManagement({ drivers, setDrivers, currentUser, isAdmin, serviceRequests = [], setServiceRequests, messages, setMessages }) {
@@ -7,6 +7,11 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
     const [locationPermission, setLocationPermission] = useState(null);
     const [newMessage, setNewMessage] = useState("");
     const [driverHistory, setDriverHistory] = useState([]);
+    const messagesEndRef = useRef(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -301,8 +306,9 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                             }}>
                                 <div>
                                     <h4 style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{driver.name}</h4>
-                                    <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
                                         <span>Placa: {driver.vehicle}</span>
+                                        {isAdmin && <span>Contraseña: <strong style={{ color: 'var(--text-primary)' }}>{driver.password || 'No registrada'}</strong></span>}
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             <MapPin size={14} color={
                                                 driver.status === 'Disponible' ? "var(--accent-secondary)" :
@@ -314,25 +320,59 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                     </div>
                                 </div>
 
-                                <select
-                                    className="glass-input"
-                                    value={driver.status}
-                                    onChange={(e) => updateStatus(driver.id, e.target.value)}
-                                    disabled={!isAdmin && locationPermission !== 'granted'}
-                                    style={{
-                                        padding: '8px 12px',
-                                        minWidth: '140px',
-                                        cursor: 'pointer',
-                                        fontWeight: '600',
-                                        border: `1px solid ${driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'}`,
-                                        background: driver.status === 'Disponible' ? 'rgba(0,184,148,0.1)' : driver.status === 'En Servicio' ? 'rgba(253,203,110,0.1)' : 'rgba(255,118,117,0.1)',
-                                        color: driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'
-                                    }}
-                                >
-                                    <option value="Disponible" style={{ background: 'var(--bg-primary)' }}>🟢 Disponible</option>
-                                    <option value="En Servicio" style={{ background: 'var(--bg-primary)' }}>🟡 En Servicio</option>
-                                    <option value="Ocupado" style={{ background: 'var(--bg-primary)' }}>🔴 Ocupado</option>
-                                </select>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <select
+                                        className="glass-input"
+                                        value={driver.status}
+                                        onChange={(e) => updateStatus(driver.id, e.target.value)}
+                                        disabled={!isAdmin && locationPermission !== 'granted'}
+                                        style={{
+                                            padding: '8px 12px',
+                                            minWidth: '140px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            border: `1px solid ${driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'}`,
+                                            background: driver.status === 'Disponible' ? 'rgba(0,184,148,0.1)' : driver.status === 'En Servicio' ? 'rgba(253,203,110,0.1)' : 'rgba(255,118,117,0.1)',
+                                            color: driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'
+                                        }}
+                                    >
+                                        <option value="Disponible" style={{ background: 'var(--bg-primary)' }}>🟢 Disponible</option>
+                                        <option value="En Servicio" style={{ background: 'var(--bg-primary)' }}>🟡 En Servicio</option>
+                                        <option value="Ocupado" style={{ background: 'var(--bg-primary)' }}>🔴 Ocupado</option>
+                                    </select>
+
+                                    {isAdmin && (
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm(`¿Estás seguro de eliminar permanentemente al conductor ${driver.name}?`)) {
+                                                    const { error } = await supabase.from('drivers').delete().eq('id', driver.id);
+                                                    if (error) {
+                                                        alert('Error al eliminar: ' + error.message);
+                                                    } else {
+                                                        if (setDrivers) {
+                                                            setDrivers(prev => prev.filter(d => d.id !== driver.id));
+                                                        }
+                                                        alert('Conductor eliminado exitosamente.');
+                                                    }
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'rgba(255,118,117,0.1)',
+                                                border: '1px solid var(--danger)',
+                                                color: 'var(--danger)',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            title="Eliminar Conductor"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))
                     )}
@@ -600,7 +640,8 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '12px',
-                        overflowY: 'auto'
+                        overflowY: 'auto',
+                        maxHeight: '350px'
                     }}>
                         {messages.filter(msg => !msg.recipient || msg.recipient === 'Todos' || msg.recipient === currentUser.name || msg.sender === currentUser.name).map(msg => (
                             <div key={msg.id} style={{
@@ -615,6 +656,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 </span>
                             </div>
                         ))}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '12px' }}>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BellRing, MessageSquare, Send, CheckCircle, Navigation, Plus, BarChart2, Filter, Users, Truck } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -12,6 +12,11 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     const [completedServices, setCompletedServices] = useState([]);
     const [filterDriver, setFilterDriver] = useState('');
     const [filterType, setFilterType] = useState('');
+    const messagesEndRef = useRef(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     // Formulario de nueva solicitud
     const [newRequest, setNewRequest] = useState({ type: 'Estandar', location: '' });
@@ -346,7 +351,8 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '12px',
-                        overflowY: 'auto'
+                        overflowY: 'auto',
+                        maxHeight: '350px'
                     }}>
                         {messages.map(msg => (
                             <div key={msg.id} style={{
@@ -361,6 +367,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                 </span>
                             </div>
                         ))}
+                        <div ref={messagesEndRef} />
                     </div>
 
                     <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
