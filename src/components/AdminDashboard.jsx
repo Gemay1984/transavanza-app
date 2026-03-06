@@ -301,22 +301,24 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                                 return;
                                                             }
 
-                                                            // Enviar mensaje automático al conductor en Supabase
-                                                            await supabase
-                                                                .from('messages')
-                                                                .insert([{
-                                                                    text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\nRecogida: ${req.location}\nServicio: ${req.type}\nHora: ${req.time}`,
-                                                                    sender: "Administrador",
-                                                                    recipient: driverToAssign.name,
-                                                                    time: new Date().toLocaleTimeString()
-                                                                }]);
-
-                                                            // Extraer posible nombre de cliente
+                                                            // Extraer nombre del pasajero si está en la location
                                                             let clientName = null;
                                                             const refMatch = req.location.match(/\(Ref: (.*?) -/);
                                                             if (refMatch && refMatch[1]) {
                                                                 clientName = refMatch[1].trim();
                                                             }
+                                                            // Limpiar la dirección (quitar la parte del Ref)
+                                                            const cleanLocation = req.location.replace(/\(Ref:.*?\)\s*/, '').trim();
+
+                                                            // Enviar mensaje automático al conductor con todos los datos en un solo mensaje
+                                                            await supabase
+                                                                .from('messages')
+                                                                .insert([{
+                                                                    text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\n${clientName ? `👤 Pasajero: ${clientName}\n` : ''}📍 Recogida: ${cleanLocation}\n🚗 Tipo: ${req.type}\n🕐 Hora: ${req.time}`,
+                                                                    sender: "Administrador",
+                                                                    recipient: driverToAssign.name,
+                                                                    time: new Date().toLocaleTimeString()
+                                                                }]);
 
                                                             // Guardar registro histórico con datos del pasajero
                                                             await supabase
