@@ -174,3 +174,22 @@
     gap: 16px !important;
   }
 }
+
+/* WhatsApp like chat scrollbar */
+.whatsapp-chat::-webkit-scrollbar {
+  width: 8px;
+}
+
+.whatsapp-chat::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.whatsapp-chat::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+}
+
+.whatsapp-chat::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
