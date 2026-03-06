@@ -574,77 +574,58 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
 
 
 
-                {/* Tarjeta Servicio en Curso - Lee desde completed_services (driverHistory) */}
+                {/* Tarjeta Servicio en Curso */}
                 {!isAdmin && currentUser && (() => {
                     const currentDriver = drivers.find(d => d.id === currentUser.id);
                     const isInService = currentDriver?.status === 'En Servicio';
                     if (!isInService) return null;
-
-                    // Buscar el servicio activo: el que NO tiene end_time en el historial del conductor
                     const activeService = driverHistory.find(s => !s.end_time);
-
+                    const serviceMsg = [...messages].reverse().find(m =>
+                        (m.recipient === currentUser.name) &&
+                        m.text && m.text.includes('SERVICIO ASIGNADO')
+                    );
+                    const info = activeService || serviceMsg;
                     return (
-                        <div style={{
-                            marginTop: '24px', padding: '24px',
-                            background: 'rgba(253,203,110,0.1)', border: '2px solid var(--warning)',
-                            borderRadius: '16px',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-                        }}>
-                            <p style={{ color: 'var(--warning)', fontWeight: 800, marginBottom: '16px', fontSize: '1.1rem', letterSpacing: '0.5px', textAlign: 'center' }}>
+                        <div style={{ marginTop: '24px', padding: '24px', background: 'rgba(253,203,110,0.1)', border: '2px solid var(--warning)', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                            <p style={{ color: 'var(--warning)', fontWeight: 800, marginBottom: '16px', fontSize: '1.1rem', textAlign: 'center' }}>
                                 🟡 SERVICIO EN CURSO
                             </p>
-
-                            {activeService ? (
-                                <div style={{
-                                    background: 'rgba(255,255,255,0.05)',
-                                    padding: '16px',
-                                    borderRadius: '12px',
-                                    marginBottom: '20px',
-                                    border: '1px solid rgba(253,203,110,0.3)',
-                                    textAlign: 'left'
-                                }}>
-                                    {activeService.passenger_name && (
-                                        <div style={{ marginBottom: '10px' }}>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Pasajero:</label>
-                                            <p style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>👤 {activeService.passenger_name}</p>
-                                        </div>
-                                    )}
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
-                                        <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word' }}>📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0]?.trim()}</p>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Tipo:</label>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>🚗 {activeService.type}</p>
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Hora Asignado:</label>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🕐 {activeService.accepted_time}</p>
-                                        </div>
-                                    </div>
-                                    {activeService.location?.includes('GPS: ') && (
-                                        <button
-                                            onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')}
-                                            className="glass-button"
-                                            style={{
-                                                marginTop: '12px', width: '100%',
-                                                background: 'var(--accent-gradient)', border: 'none',
-                                                padding: '10px', fontSize: '0.9rem', color: 'white',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                                            }}
-                                        >
-                                            <Navigation size={16} /> Abrir GPS / Mapa
-                                        </button>
-                                    )}
+                            {info ? (
+                                <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px', marginBottom: '16px', border: '1px solid rgba(253,203,110,0.3)', textAlign: 'left' }}>
+                                    {activeService ? (
+                                        <>
+                                            {activeService.passenger_name && (
+                                                <div style={{ marginBottom: '10px' }}>
+                                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Pasajero:</label>
+                                                    <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>👤 {activeService.passenger_name}</p>
+                                                </div>
+                                            )}
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
+                                                <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word' }}>📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/,'').split('| GPS:')[0]?.trim()}</p>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                                <div><label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Tipo:</label><p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>🚗 {activeService.type}</p></div>
+                                                <div><label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Hora:</label><p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🕐 {activeService.accepted_time}</p></div>
+                                            </div>
+                                            {activeService.location?.includes('GPS: ') && (
+                                                <button onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')} className="glass-button" style={{ marginTop: '8px', width: '100%', background: 'var(--accent-gradient)', border: 'none', padding: '10px', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                                    <Navigation size={16} /> Abrir GPS / Mapa
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : serviceMsg ? (
+                                        <>
+                                            <p style={{ fontSize: '0.7rem', color: 'var(--warning)', fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>📋 Detalles del servicio</p>
+                                            <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.7', color: '#e9edef', wordBreak: 'break-word' }}>{serviceMsg.text}</p>
+                                        </>
+                                    ) : null}
                                 </div>
                             ) : (
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
-                                    Servicio en curso. Cargando detalles...
+                                    Cargando detalles del servicio...
                                 </p>
                             )}
-
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
                                 Al completar el servicio, presiona el botón de abajo para quedar "Disponible" nuevamente.
                             </p>
                             <button
