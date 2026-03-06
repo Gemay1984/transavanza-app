@@ -557,19 +557,16 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                 )}
 
 
-                {/* Tarjeta Servicio en Curso - Lee el ultimo mensaje de asignacion del conductor */}
+
+
+                {/* Tarjeta Servicio en Curso - Lee desde completed_services (driverHistory) */}
                 {!isAdmin && currentUser && (() => {
                     const currentDriver = drivers.find(d => d.id === currentUser.id);
                     const isInService = currentDriver?.status === 'En Servicio';
                     if (!isInService) return null;
 
-                    // Buscar el ultimo mensaje de asignacion dirigido a este conductor
-                    const serviceMsg = [...messages]
-                        .reverse()
-                        .find(m =>
-                            m.recipient === currentUser.name &&
-                            m.text && m.text.includes('SERVICIO ASIGNADO')
-                        );
+                    // Buscar el servicio activo: el que NO tiene end_time en el historial del conductor
+                    const activeService = driverHistory.find(s => !s.end_time);
 
                     return (
                         <div style={{
@@ -582,27 +579,38 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 🟡 SERVICIO EN CURSO
                             </p>
 
-                            {serviceMsg ? (
+                            {activeService ? (
                                 <div style={{
                                     background: 'rgba(255,255,255,0.05)',
                                     padding: '16px',
                                     borderRadius: '12px',
                                     marginBottom: '20px',
-                                    border: '1px solid rgba(253,203,110,0.3)'
+                                    border: '1px solid rgba(253,203,110,0.3)',
+                                    textAlign: 'left'
                                 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--warning)', fontWeight: 'bold', textTransform: 'uppercase' }}>📋 Detalles del Servicio</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{serviceMsg.time}</span>
+                                    {activeService.passenger_name && (
+                                        <div style={{ marginBottom: '10px' }}>
+                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Pasajero:</label>
+                                            <p style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>👤 {activeService.passenger_name}</p>
+                                        </div>
+                                    )}
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
+                                        <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word' }}>📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/,'').split('| GPS:')[0]?.trim()}</p>
                                     </div>
-                                    <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.6', color: '#e9edef', wordBreak: 'break-word' }}>
-                                        {serviceMsg.text}
-                                    </p>
-                                    {serviceMsg.text && serviceMsg.text.includes('GPS: ') && (
+                                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Tipo:</label>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>🚗 {activeService.type}</p>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Hora Asignado:</label>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🕐 {activeService.accepted_time}</p>
+                                        </div>
+                                    </div>
+                                    {activeService.location?.includes('GPS: ') && (
                                         <button
-                                            onClick={() => {
-                                                const gpsUrl = serviceMsg.text.split('GPS: ')[1]?.split('\n')[0];
-                                                if (gpsUrl) window.open(gpsUrl, '_blank');
-                                            }}
+                                            onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')}
                                             className="glass-button"
                                             style={{
                                                 marginTop: '12px', width: '100%',
@@ -617,8 +625,9 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 </div>
                             ) : (
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
-                                    Servicio en curso. Revisa el chat para ver los detalles enviados por el administrador.
+                                    Servicio en curso. Cargando detalles...
                                 </p>
+                            )}
                             )}
 
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
