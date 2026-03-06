@@ -344,29 +344,48 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
 
                     <div style={{
                         flex: 1,
-                        background: 'rgba(0,0,0,0.2)',
-                        borderRadius: '8px',
+                        background: '#0b141a',
+                        backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'#ffffff\' fill-opacity=\'0.05\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+                        borderRadius: '12px',
                         padding: '16px',
                         marginBottom: '16px',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px',
+                        gap: '8px',
                         overflowY: 'auto',
-                        maxHeight: '350px'
+                        maxHeight: '400px',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
                     }}>
-                        {messages.map(msg => (
-                            <div key={msg.id} style={{
-                                background: msg.sender === 'Administrador' ? 'rgba(108, 92, 231, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                                border: `1px solid ${msg.sender === 'Administrador' ? 'rgba(108, 92, 231, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
-                                borderRadius: '8px',
-                                padding: '12px'
-                            }}>
-                                <p style={{ fontSize: '0.95rem', marginBottom: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.text}</p>
-                                <span style={{ fontSize: '0.75rem', color: msg.sender === 'Administrador' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
-                                    {msg.sender} {msg.recipient && msg.recipient !== 'Todos' ? `(Privado a ${msg.recipient})` : '(Público)'} • {msg.time}
-                                </span>
-                            </div>
-                        ))}
+                        {messages.map(msg => {
+                            const isMe = msg.sender === 'Administrador';
+                            const isSystem = msg.sender === 'Sistema';
+
+                            return (
+                                <div key={msg.id} style={{
+                                    alignSelf: isMe ? 'flex-end' : 'flex-start',
+                                    maxWidth: '85%',
+                                    background: isMe ? '#005c4b' : (isSystem ? '#1f2c34' : '#202c33'),
+                                    color: '#e9edef',
+                                    borderRadius: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0',
+                                    padding: '8px 12px',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                                    position: 'relative'
+                                }}>
+                                    {!isMe && (
+                                        <p style={{ fontSize: '0.8rem', color: isSystem ? '#53bdeb' : '#e28743', marginBottom: '4px', fontWeight: 'bold' }}>
+                                            {msg.sender}
+                                        </p>
+                                    )}
+                                    <p style={{ fontSize: '0.95rem', marginBottom: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.text}</p>
+                                    <div style={{ textAlign: 'right', marginTop: '2px' }}>
+                                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)' }}>
+                                            {msg.time} {msg.recipient && msg.recipient !== 'Todos' ? `(Privado a ${msg.recipient})` : '(Público)'}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                         <div ref={messagesEndRef} />
                     </div>
 

@@ -8,6 +8,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
     const [newMessage, setNewMessage] = useState("");
     const [driverHistory, setDriverHistory] = useState([]);
     const messagesEndRef = useRef(null);
+    const [expandedDriverId, setExpandedDriverId] = useState(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -295,55 +296,92 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                         </div>
                     ) : (
                         displayedDrivers.map(driver => (
-                            <div key={driver.id} style={{
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid var(--border-glass)',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                                <div>
-                                    <h4 style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{driver.name}</h4>
-                                    <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-                                        <span>Placa: {driver.vehicle}</span>
-                                        {isAdmin && <span>Contraseña: <strong style={{ color: 'var(--text-primary)' }}>{driver.password || 'No registrada'}</strong></span>}
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={14} color={
-                                                driver.status === 'Disponible' ? "var(--accent-secondary)" :
-                                                    driver.status === 'En Servicio' ? "var(--warning)" : "var(--danger)"
-                                            } />
-                                            {driver.status === 'Disponible' ? "En línea - GPS activo" :
-                                                driver.status === 'En Servicio' ? "En ruta de servicio" : "Inactivo / Ocupado"}
-                                        </span>
+                            <div
+                                key={driver.id}
+                                onClick={() => isAdmin && setExpandedDriverId(expandedDriverId === driver.id ? null : driver.id)}
+                                style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: expandedDriverId === driver.id ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)',
+                                    borderRadius: '12px',
+                                    padding: '16px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '12px',
+                                    cursor: isAdmin ? 'pointer' : 'default',
+                                    transition: 'all 0.2s',
+                                    boxShadow: expandedDriverId === driver.id ? '0 4px 12px rgba(0,0,0,0.2)' : 'none'
+                                }}
+                            >
+                                {/* Cabecera visible siempre */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <h4 style={{ fontSize: '1.1rem', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {driver.name}
+                                            {isAdmin && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                {expandedDriverId === driver.id ? '▼' : '▶'}
+                                            </span>}
+                                        </h4>
+                                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                                            <span>Placa: {driver.vehicle}</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <MapPin size={14} color={
+                                                    driver.status === 'Disponible' ? "var(--accent-secondary)" :
+                                                        driver.status === 'En Servicio' ? "var(--warning)" : "var(--danger)"
+                                                } />
+                                                {driver.status === 'Disponible' ? "En línea - GPS activo" :
+                                                    driver.status === 'En Servicio' ? "En ruta de servicio" : "Inactivo / Ocupado"}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <select
+                                            className="glass-input"
+                                            value={driver.status}
+                                            onChange={(e) => updateStatus(driver.id, e.target.value)}
+                                            disabled={!isAdmin && locationPermission !== 'granted'}
+                                            style={{
+                                                padding: '8px 12px',
+                                                minWidth: '140px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600',
+                                                border: `1px solid ${driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'}`,
+                                                background: driver.status === 'Disponible' ? 'rgba(0,184,148,0.1)' : driver.status === 'En Servicio' ? 'rgba(253,203,110,0.1)' : 'rgba(255,118,117,0.1)',
+                                                color: driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'
+                                            }}
+                                        >
+                                            <option value="Disponible" style={{ background: 'var(--bg-primary)' }}>🟢 Disponible</option>
+                                            <option value="En Servicio" style={{ background: 'var(--bg-primary)' }}>🟡 En Servicio</option>
+                                            <option value="Ocupado" style={{ background: 'var(--bg-primary)' }}>🔴 Ocupado</option>
+                                        </select>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <select
-                                        className="glass-input"
-                                        value={driver.status}
-                                        onChange={(e) => updateStatus(driver.id, e.target.value)}
-                                        disabled={!isAdmin && locationPermission !== 'granted'}
-                                        style={{
-                                            padding: '8px 12px',
-                                            minWidth: '140px',
-                                            cursor: 'pointer',
-                                            fontWeight: '600',
-                                            border: `1px solid ${driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'}`,
-                                            background: driver.status === 'Disponible' ? 'rgba(0,184,148,0.1)' : driver.status === 'En Servicio' ? 'rgba(253,203,110,0.1)' : 'rgba(255,118,117,0.1)',
-                                            color: driver.status === 'Disponible' ? 'var(--success)' : driver.status === 'En Servicio' ? 'var(--warning)' : 'var(--danger)'
-                                        }}
-                                    >
-                                        <option value="Disponible" style={{ background: 'var(--bg-primary)' }}>🟢 Disponible</option>
-                                        <option value="En Servicio" style={{ background: 'var(--bg-primary)' }}>🟡 En Servicio</option>
-                                        <option value="Ocupado" style={{ background: 'var(--bg-primary)' }}>🔴 Ocupado</option>
-                                    </select>
+                                {/* Contenido expandible (solo Admin) */}
+                                {expandedDriverId === driver.id && isAdmin && (
+                                    <div style={{
+                                        marginTop: '4px',
+                                        paddingTop: '16px',
+                                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        animation: 'fadeIn 0.2s ease'
+                                    }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
+                                            <span><strong style={{ color: 'var(--text-secondary)' }}>Usuario:</strong> {driver.username}</span>
+                                            <span><strong style={{ color: 'var(--text-secondary)' }}>Teléfono:</strong> {driver.phone || 'N/A'}</span>
+                                            <span>
+                                                <strong style={{ color: 'var(--text-secondary)' }}>Contraseña:</strong>{' '}
+                                                <span style={{ color: '#fff', fontWeight: 'bold', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '4px', letterSpacing: '1px' }}>
+                                                    {driver.password || 'No registrada'}
+                                                </span>
+                                            </span>
+                                        </div>
 
-                                    {isAdmin && (
                                         <button
-                                            onClick={async () => {
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
                                                 if (window.confirm(`¿Estás seguro de eliminar permanentemente al conductor ${driver.name}?`)) {
                                                     const { error } = await supabase.from('drivers').delete().eq('id', driver.id);
                                                     if (error) {
@@ -360,19 +398,23 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 background: 'rgba(255,118,117,0.1)',
                                                 border: '1px solid var(--danger)',
                                                 color: 'var(--danger)',
-                                                padding: '8px',
+                                                padding: '8px 16px',
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center'
+                                                gap: '8px',
+                                                fontWeight: '600',
+                                                transition: 'all 0.2s'
                                             }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,118,117,0.2)'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,118,117,0.1)'}
                                             title="Eliminar Conductor"
                                         >
-                                            <Trash2 size={18} />
+                                            <Trash2 size={18} /> Eliminar
                                         </button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}
@@ -633,29 +675,48 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
 
                     <div style={{
                         flex: 1,
-                        background: 'rgba(0,0,0,0.2)',
-                        borderRadius: '8px',
+                        background: '#0b141a',
+                        backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'#ffffff\' fill-opacity=\'0.05\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+                        borderRadius: '12px',
                         padding: '16px',
                         marginBottom: '16px',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px',
+                        gap: '8px',
                         overflowY: 'auto',
-                        maxHeight: '350px'
+                        maxHeight: '400px',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
                     }}>
-                        {messages.filter(msg => !msg.recipient || msg.recipient === 'Todos' || msg.recipient === currentUser.name || msg.sender === currentUser.name).map(msg => (
-                            <div key={msg.id} style={{
-                                background: msg.sender === 'Administrador' || msg.sender === 'Administración' || msg.sender === 'Sistema' ? 'rgba(108, 92, 231, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                                border: `1px solid ${msg.sender === 'Administrador' || msg.sender === 'Administración' || msg.sender === 'Sistema' ? 'rgba(108, 92, 231, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
-                                borderRadius: '8px',
-                                padding: '12px'
-                            }}>
-                                <p style={{ fontSize: '0.95rem', marginBottom: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.text}</p>
-                                <span style={{ fontSize: '0.75rem', color: msg.sender === 'Administrador' || msg.sender === 'Administración' || msg.sender === 'Sistema' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
-                                    {msg.sender} {msg.recipient && msg.recipient !== 'Todos' ? `(Privado)` : ''} • {msg.time}
-                                </span>
-                            </div>
-                        ))}
+                        {messages.filter(msg => !msg.recipient || msg.recipient === 'Todos' || msg.recipient === currentUser.name || msg.sender === currentUser.name).map(msg => {
+                            const isMe = msg.sender === currentUser.name;
+                            const isSystem = msg.sender === 'Administrador' || msg.sender === 'Administración' || msg.sender === 'Sistema';
+
+                            return (
+                                <div key={msg.id} style={{
+                                    alignSelf: isMe ? 'flex-end' : 'flex-start',
+                                    maxWidth: '85%',
+                                    background: isMe ? '#005c4b' : (isSystem ? '#1f2c34' : '#202c33'),
+                                    color: '#e9edef',
+                                    borderRadius: isMe ? '12px 12px 0 12px' : '12px 12px 12px 0',
+                                    padding: '8px 12px',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                                    position: 'relative'
+                                }}>
+                                    {!isMe && (
+                                        <p style={{ fontSize: '0.8rem', color: isSystem ? '#53bdeb' : '#e28743', marginBottom: '4px', fontWeight: 'bold' }}>
+                                            {msg.sender}
+                                        </p>
+                                    )}
+                                    <p style={{ fontSize: '0.95rem', marginBottom: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.4' }}>{msg.text}</p>
+                                    <div style={{ textAlign: 'right', marginTop: '2px' }}>
+                                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)' }}>
+                                            {msg.time} {msg.recipient && msg.recipient !== 'Todos' ? `(Privado)` : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                         <div ref={messagesEndRef} />
                     </div>
 
