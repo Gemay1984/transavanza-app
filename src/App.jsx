@@ -10,6 +10,7 @@ import DriverManagement from './components/DriverManagement';
 import PassengerRegistration from './components/PassengerRegistration';
 import CustomerDashboard from './components/CustomerDashboard';
 import Login from './components/Login';
+import AdminDriverList from './components/AdminDriverList';
 
 // Hook para localStorage
 function useLocalStorage(key, initialValue) {
@@ -232,12 +233,20 @@ function App() {
           ) : (
             <>
               {isAdmin && (
-                <button
-                  className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('dashboard')}
-                >
-                  <LayoutDashboard size={20} /> Tablero Admin
-                </button>
+                <>
+                  <button
+                    className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('dashboard')}
+                  >
+                    <LayoutDashboard size={20} /> Tablero Admin
+                  </button>
+                  <button
+                    className={`nav-item ${activeTab === 'admin-drivers' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('admin-drivers')}
+                  >
+                    <Users size={20} /> Conductores
+                  </button>
+                </>
               )}
               <button
                 className={`nav-item ${activeTab === 'drivers' ? 'active' : ''}`}
@@ -313,6 +322,18 @@ function App() {
               messages={messages}
               setMessages={setMessages}
             />
+          </div>
+        )}
+
+        {activeTab === 'admin-drivers' && isAdmin && (
+          <div className="animate-fade-in">
+            <div className="page-header">
+              <div>
+                <h2 className="page-title">Directorio de Conductores</h2>
+                <p className="page-subtitle">Gestión centralizada de credenciales y accesos</p>
+              </div>
+            </div>
+            <AdminDriverList drivers={drivers} setDrivers={setDrivers} />
           </div>
         )}
 
