@@ -280,6 +280,27 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
 
                                                         const driverToAssign = drivers.find(d => String(d.id) === String(driverId));
                                                         if (driverToAssign) {
+                                                            // Extraer nombre del pasajero si está en la location
+                                                            let clientName = null;
+                                                            const refMatch = req.location.match(/\(Ref: (.*?) -/);
+                                                            if (refMatch && refMatch[1]) {
+                                                                clientName = refMatch[1].trim();
+                                                            }
+                                                            const cleanLocation = req.location.replace(/\(Ref:.*?\)\s*/, '').trim();
+
+                                                            // PASO 1: Guardar en historial ANTES de cambiar estado (evita race condition)
+                                                            await supabase
+                                                                .from('completed_services')
+                                                                .insert([{
+                                                                    type: req.type,
+                                                                    location: req.location,
+                                                                    driver_name: driverToAssign.name,
+                                                                    passenger_name: clientName || cleanLocation.split('|')[0].trim() || 'Sin nombre',
+                                                                    accepted_time: new Date().toLocaleTimeString(),
+                                                                    start_timestamp: new Date().toISOString()
+                                                                }]);
+
+                                                            // PASO 2: Ahora sí cambiar estado del conductor a 'En Servicio'
                                                             const { error: statusError } = await supabase
                                                                 .from('drivers')
                                                                 .update({ status: 'En Servicio' })
@@ -291,16 +312,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                                 return;
                                                             }
 
-                                                            // Extraer nombre del pasajero si está en la location
-                                                            let clientName = null;
-                                                            const refMatch = req.location.match(/\(Ref: (.*?) -/);
-                                                            if (refMatch && refMatch[1]) {
-                                                                clientName = refMatch[1].trim();
-                                                            }
-                                                            // Limpiar la dirección (quitar la parte del Ref)
-                                                            const cleanLocation = req.location.replace(/\(Ref:.*?\)\s*/, '').trim();
-
-                                                            // Enviar mensaje automático al conductor con todos los datos en un solo mensaje
+                                                            // PASO 3: Enviar mensaje al conductor
                                                             await supabase
                                                                 .from('messages')
                                                                 .insert([{
@@ -310,25 +322,9 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                                     time: new Date().toLocaleTimeString()
                                                                 }]);
 
-                                                            // Guardar registro histórico con datos del pasajero
-                                                            await supabase
-                                                                .from('completed_services')
-                                                                .insert([{
-                                                                    type: req.type,
-                                                                    location: req.location,
-                                                                    driver_name: driverToAssign.name,
-                                                                    passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
-                                                                    accepted_time: new Date().toLocaleTimeString(),
-                                                                    start_timestamp: new Date().toISOString()
-                                                                }]);
+                                                            // PASO 4: Eliminar solicitud y notificar cliente
+                                                            await supabase.from('service_requests').delete().eq('id', req.id);
 
-                                                            // Eliminar la solicitud asignada
-                                                            await supabase
-                                                                .from('service_requests')
-                                                                .delete()
-                                                                .eq('id', req.id);
-
-                                                            // Notificar al cliente si existe
                                                             if (clientName) {
                                                                 await supabase.from('messages').insert([{
                                                                     text: `🚗 ¡CONDUCTOR ASIGNADO!\nConductor: ${driverToAssign.name}\nPlaca: ${driverToAssign.vehicle}`,
