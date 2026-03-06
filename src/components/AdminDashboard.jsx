@@ -302,13 +302,14 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                                 clientName = refMatch[1].trim();
                                                             }
 
-                                                            // Guardar registro histórico del servicio prestado
+                                                            // Guardar registro histórico con datos del pasajero
                                                             await supabase
                                                                 .from('completed_services')
                                                                 .insert([{
                                                                     type: req.type,
                                                                     location: req.location,
                                                                     driver_name: driverToAssign.name,
+                                                                    passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
                                                                     accepted_time: new Date().toLocaleTimeString(),
                                                                     start_timestamp: new Date().toISOString()
                                                                 }]);

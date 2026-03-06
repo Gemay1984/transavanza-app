@@ -515,16 +515,17 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                         clientName = refMatch[1].trim();
                                                     }
 
-                                                    // Guardar registro histórico del servicio prestado
-                                                    await supabase
-                                                        .from('completed_services')
-                                                        .insert([{
-                                                            type: req.type,
-                                                            location: req.location,
-                                                            driver_name: currentUser.name,
-                                                            accepted_time: new Date().toLocaleTimeString(),
-                                                            start_timestamp: new Date().toISOString()
-                                                        }]);
+                                                     // Guardar registro historico con nombre del pasajero
+                                                     await supabase
+                                                         .from('completed_services')
+                                                         .insert([{
+                                                             type: req.type,
+                                                             location: req.location,
+                                                             driver_name: currentUser.name,
+                                                             passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
+                                                             accepted_time: new Date().toLocaleTimeString(),
+                                                             start_timestamp: new Date().toISOString()
+                                                         }]);
 
                                                     // Eliminar solicitud de la cola
                                                     await supabase
@@ -777,7 +778,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)', textAlign: 'left' }}>
                                         <th style={{ padding: '8px 12px' }}>Tipo</th>
-                                        <th style={{ padding: '8px 12px' }}>Recogida</th>
+                                        <th style={{ padding: '8px 12px' }}>Pasajero / Dirección</th>
                                         <th style={{ padding: '8px 12px' }}>Hora</th>
                                         <th style={{ padding: '8px 12px' }}>Duración</th>
                                     </tr>
@@ -792,7 +793,14 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>{svc.type}</span>
                                             </td>
                                             <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', maxWidth: '280px' }}>
-                                                {svc.location?.split('| GPS:')[0]}
+                                                {svc.passenger_name && (
+                                                    <span style={{ display: 'block', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                                                        👤 {svc.passenger_name}
+                                                    </span>
+                                                )}
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    📍 {svc.location?.split('| GPS:')[0]?.split('(Ref:')[0]?.trim()}
+                                                </span>
                                                 {svc.location?.includes('GPS: ') && (
                                                     <a href={svc.location.split('GPS: ')[1]} target="_blank" rel="noreferrer" title="Ver en mapa" style={{ marginLeft: '8px', color: 'var(--accent-secondary)' }}>
                                                         <Navigation size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />
