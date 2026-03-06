@@ -484,7 +484,6 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                             <button
                                                 className="glass-button success"
                                                 style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-                                                disabled={locationPermission !== 'granted'} // Prevent accepting if no GPS
                                                 onClick={async () => {
                                                     const currentDriverState = drivers.find(d => d.id === currentUser.id);
                                                     if (!currentDriverState || currentDriverState.status !== 'Disponible') {
@@ -498,11 +497,13 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                         .update({ status: 'En Servicio' })
                                                         .eq('id', currentUser.id);
 
-                                                    // Avisar al administrador
+                                                    // Avisar al administrador con todos los detalles
+                                                    const clientNameForMsg = req.location.match(/\(Ref: (.*?) -/)?.[1]?.trim();
+                                                    const cleanLocForMsg = req.location.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0].trim();
                                                     await supabase
                                                         .from('messages')
                                                         .insert([{
-                                                            text: `✅ El conductor ${currentUser.name} ha ACEPTADO el servicio en ${req.location}.`,
+                                                            text: `✅ ${currentUser.name} ACEPTÓ el servicio\n${clientNameForMsg ? `👤 Pasajero: ${clientNameForMsg}\n` : ''}📍 ${cleanLocForMsg}\n🚗 Tipo: ${req.type}`,
                                                             sender: "Sistema",
                                                             recipient: "Administrador",
                                                             time: new Date().toLocaleTimeString()
@@ -596,7 +597,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                     )}
                                     <div style={{ marginBottom: '10px' }}>
                                         <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
-                                        <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word' }}>📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/,'').split('| GPS:')[0]?.trim()}</p>
+                                        <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word' }}>📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0]?.trim()}</p>
                                     </div>
                                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                                         <div>
@@ -627,7 +628,6 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
                                     Servicio en curso. Cargando detalles...
                                 </p>
-                            )}
                             )}
 
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
