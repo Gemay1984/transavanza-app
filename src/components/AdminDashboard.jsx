@@ -151,7 +151,8 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                         <Popup>
                                             <strong>{driver.name}</strong><br />
                                             Placa: {driver.vehicle}<br />
-                                            Estado: {driver.status}
+                                            Estado: {driver.status}<br />
+                                            Contraseña: <strong>{driver.password || 'N/A'}</strong>
                                         </Popup>
                                     </Marker>
                                 ))}
@@ -352,8 +353,10 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px',
-                        overflowY: 'auto',
+                        overflowY: 'scroll',
+                        minHeight: 0,
                         maxHeight: '400px',
+                        height: '400px',
                         border: '1px solid rgba(255,255,255,0.05)',
                         boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
                     }}>

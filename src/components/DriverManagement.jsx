@@ -683,7 +683,8 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px',
-                        overflowY: 'auto',
+                        overflowY: 'scroll',
+                        minHeight: 0,
                         maxHeight: '400px',
                         border: '1px solid rgba(255,255,255,0.05)',
                         boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
