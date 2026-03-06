@@ -102,7 +102,14 @@ function App() {
     // Supabase Realtime Subscriptions
     const driversChannel = supabase.channel('table-drivers-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, payload => {
-        fetchData(); // Simplest approach: refetch on change
+        // Actualizacion quirurgica: solo modificar el conductor afectado, sin recargar todo
+        if (payload.eventType === 'INSERT') {
+          setDrivers(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setDrivers(prev => prev.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d));
+        } else if (payload.eventType === 'DELETE') {
+          setDrivers(prev => prev.filter(d => d.id !== payload.old.id));
+        }
       })
       .subscribe();
 
@@ -114,10 +121,12 @@ function App() {
 
     const requestsChannel = supabase.channel('table-requests-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'service_requests' }, payload => {
-        if (payload.event === 'INSERT') {
+        if (payload.eventType === 'INSERT') {
           setServiceRequests(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'DELETE') {
+          setServiceRequests(prev => prev.filter(r => r.id !== payload.old.id));
         } else {
-          fetchData();
+          setServiceRequests(prev => prev.map(r => r.id === payload.new.id ? { ...r, ...payload.new } : r));
         }
       })
       .subscribe();
