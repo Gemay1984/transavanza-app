@@ -256,7 +256,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                         const driverId = selectedDrivers[req.id];
                                                         if (!driverId) return alert('Por favor selecciona un conductor de la lista.');
 
-                                                        const driverToAssign = drivers.find(d => d.id === driverId);
+                                                        const driverToAssign = drivers.find(d => String(d.id) === String(driverId));
                                                         if (driverToAssign) {
                                                             // Actualizar el estado del conductor a 'En Servicio' en Supabase
                                                             const { error: statusError } = await supabase

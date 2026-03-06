@@ -26,22 +26,34 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
     useEffect(() => {
         if (!isAdmin && currentUser?.name) {
             const fetchHistory = async () => {
-                const { data } = await supabase
+                const { data, error } = await supabase
                     .from('completed_services')
                     .select('*')
                     .eq('driver_name', currentUser.name)
                     .order('id', { ascending: false })
                     .limit(30);
-                if (data) setDriverHistory(data);
+
+                if (error) {
+                    console.error("Error fetching history:", error);
+                } else if (data) {
+                    setDriverHistory(data);
+                }
             };
 
             fetchHistory();
 
-            // Real-time updates to history
-            const channel = supabase.channel(`driver-history-${currentUser.name}`)
+            // Real-time updates to history (manual filtering for better reliability with spaces)
+            const channel = supabase.channel(`driver_history_updates`)
                 .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'completed_services', filter: `driver_name=eq.${currentUser.name}` },
+                    { event: '*', schema: 'public', table: 'completed_services' },
                     (payload) => {
+                        // Check if the update belongs to THIS driver
+                        const isRelevant =
+                            (payload.new && payload.new.driver_name === currentUser.name) ||
+                            (payload.old && payload.old.driver_name === currentUser.name);
+
+                        if (!isRelevant) return;
+
                         if (payload.eventType === 'INSERT') {
                             setDriverHistory(prev => [payload.new, ...prev]);
                         } else if (payload.eventType === 'UPDATE') {
