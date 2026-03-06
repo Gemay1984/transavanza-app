@@ -19,7 +19,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     }, [messages]);
 
     // Formulario de nueva solicitud
-    const [newRequest, setNewRequest] = useState({ type: 'Estandar', location: '' });
+    const [newRequest, setNewRequest] = useState({ type: 'Estandar', location: '', passenger: '' });
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -56,14 +56,19 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
         e.preventDefault();
         if (!newRequest.location) return;
 
+        // Construir location con el nombre del pasajero embebido para poder extraerlo al asignar
+        const locationWithRef = newRequest.passenger
+            ? `(Ref: ${newRequest.passenger.trim()} - Servicio) ${newRequest.location}`
+            : newRequest.location;
+
         await supabase.from('service_requests').insert([{
             type: newRequest.type,
-            location: newRequest.location,
+            location: locationWithRef,
             status: 'pending',
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }]);
 
-        setNewRequest({ type: 'Estandar', location: '' });
+        setNewRequest({ type: 'Estandar', location: '', passenger: '' });
     };
 
     const activeDrivers = drivers.filter(d => d.status === 'Disponible');
@@ -184,7 +189,18 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ubicación de Recogida</label>
+                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>👤 Nombre del Pasajero</label>
+                                    <input
+                                        type="text"
+                                        className="glass-input"
+                                        placeholder="Ej. Carlos Pérez"
+                                        value={newRequest.passenger}
+                                        onChange={e => setNewRequest({ ...newRequest, passenger: e.target.value })}
+                                        style={{ marginTop: '4px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>📍 Ubicación de Recogida</label>
                                     <input
                                         type="text"
                                         className="glass-input"
