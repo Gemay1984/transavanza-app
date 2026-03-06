@@ -515,17 +515,17 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                         clientName = refMatch[1].trim();
                                                     }
 
-                                                     // Guardar registro historico con nombre del pasajero
-                                                     await supabase
-                                                         .from('completed_services')
-                                                         .insert([{
-                                                             type: req.type,
-                                                             location: req.location,
-                                                             driver_name: currentUser.name,
-                                                             passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
-                                                             accepted_time: new Date().toLocaleTimeString(),
-                                                             start_timestamp: new Date().toISOString()
-                                                         }]);
+                                                    // Guardar registro historico con nombre del pasajero
+                                                    await supabase
+                                                        .from('completed_services')
+                                                        .insert([{
+                                                            type: req.type,
+                                                            location: req.location,
+                                                            driver_name: currentUser.name,
+                                                            passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
+                                                            accepted_time: new Date().toLocaleTimeString(),
+                                                            start_timestamp: new Date().toISOString()
+                                                        }]);
 
                                                     // Eliminar solicitud de la cola
                                                     await supabase
@@ -660,10 +660,10 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                             .eq('id', activeRecord.id);
                                     }
 
-                                    // Limpiar assigned_service y cambiar estado a Disponible
+                                    // Cambiar estado a Disponible
                                     await supabase
                                         .from('drivers')
-                                        .update({ status: 'Disponible', assigned_service: null })
+                                        .update({ status: 'Disponible' })
                                         .eq('id', currentUser.id);
 
                                     // Aviso al admin
