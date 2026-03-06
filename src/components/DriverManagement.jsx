@@ -556,62 +556,58 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                 )}
 
 
-                {/* Tarjeta Servicio en Curso - Datos persistentes de assigned_service en el conductor */}
+                {/* Tarjeta Servicio en Curso - Lee el ultimo mensaje de asignacion del conductor */}
                 {!isAdmin && currentUser && (() => {
                     const currentDriver = drivers.find(d => d.id === currentUser.id);
                     const isInService = currentDriver?.status === 'En Servicio';
                     if (!isInService) return null;
 
-                    let assignedService = null;
-                    try {
-                        if (currentDriver?.assigned_service) {
-                            assignedService = JSON.parse(currentDriver.assigned_service);
-                        }
-                    } catch (e) { /* ignore */ }
+                    // Buscar el ultimo mensaje de asignacion dirigido a este conductor
+                    const serviceMsg = [...messages]
+                        .reverse()
+                        .find(m =>
+                            m.recipient === currentUser.name &&
+                            m.text && m.text.includes('SERVICIO ASIGNADO')
+                        );
 
                     return (
                         <div style={{
                             marginTop: '24px', padding: '24px',
                             background: 'rgba(253,203,110,0.1)', border: '2px solid var(--warning)',
-                            borderRadius: '16px', textAlign: 'center',
+                            borderRadius: '16px',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
                         }}>
-                            <p style={{ color: 'var(--warning)', fontWeight: 800, marginBottom: '12px', fontSize: '1.1rem', letterSpacing: '0.5px' }}>
+                            <p style={{ color: 'var(--warning)', fontWeight: 800, marginBottom: '16px', fontSize: '1.1rem', letterSpacing: '0.5px', textAlign: 'center' }}>
                                 🟡 SERVICIO EN CURSO
                             </p>
 
-                            {assignedService ? (
+                            {serviceMsg ? (
                                 <div style={{
                                     background: 'rgba(255,255,255,0.05)',
                                     padding: '16px',
                                     borderRadius: '12px',
                                     marginBottom: '20px',
-                                    textAlign: 'left',
-                                    border: '1px solid rgba(253,203,110,0.2)'
+                                    border: '1px solid rgba(253,203,110,0.3)'
                                 }}>
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
-                                        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', marginTop: '2px', wordBreak: 'break-word' }}>{assignedService.location?.split('| GPS:')[0]}</p>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--warning)', fontWeight: 'bold', textTransform: 'uppercase' }}>📋 Detalles del Servicio</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{serviceMsg.time}</span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Tipo:</label>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>{assignedService.type}</p>
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Asignado a las:</label>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{assignedService.assigned_at || assignedService.time}</p>
-                                        </div>
-                                    </div>
-
-                                    {assignedService.location?.includes('GPS: ') && (
+                                    <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.6', color: '#e9edef', wordBreak: 'break-word' }}>
+                                        {serviceMsg.text}
+                                    </p>
+                                    {serviceMsg.text && serviceMsg.text.includes('GPS: ') && (
                                         <button
-                                            onClick={() => window.open(assignedService.location.split('GPS: ')[1], '_blank')}
+                                            onClick={() => {
+                                                const gpsUrl = serviceMsg.text.split('GPS: ')[1]?.split('\n')[0];
+                                                if (gpsUrl) window.open(gpsUrl, '_blank');
+                                            }}
                                             className="glass-button"
                                             style={{
-                                                marginTop: '16px', width: '100%',
+                                                marginTop: '12px', width: '100%',
                                                 background: 'var(--accent-gradient)', border: 'none',
-                                                padding: '10px', fontSize: '0.9rem', color: 'white'
+                                                padding: '10px', fontSize: '0.9rem', color: 'white',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                                             }}
                                         >
                                             <Navigation size={16} /> Abrir GPS / Mapa
@@ -619,8 +615,8 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                     )}
                                 </div>
                             ) : (
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
-                                    Cargando detalles del servicio...
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
+                                    Servicio en curso. Revisa el chat para ver los detalles enviados por el administrador.
                                 </p>
                             )}
 
