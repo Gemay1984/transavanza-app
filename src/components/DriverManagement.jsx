@@ -556,9 +556,19 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                 )}
 
 
-                {/* Botón Finalizar Servicio - Solo cuando conductor está 'En Servicio' */}
-                {!isAdmin && currentUser && drivers.find(d => d.id === currentUser.id)?.status === 'En Servicio' && (() => {
-                    const activeService = driverHistory.find(s => !s.end_time);
+                {/* Tarjeta Servicio en Curso - Datos persistentes de assigned_service en el conductor */}
+                {!isAdmin && currentUser && (() => {
+                    const currentDriver = drivers.find(d => d.id === currentUser.id);
+                    const isInService = currentDriver?.status === 'En Servicio';
+                    if (!isInService) return null;
+
+                    let assignedService = null;
+                    try {
+                        if (currentDriver?.assigned_service) {
+                            assignedService = JSON.parse(currentDriver.assigned_service);
+                        }
+                    } catch (e) { /* ignore */ }
+
                     return (
                         <div style={{
                             marginTop: '24px', padding: '24px',
@@ -570,7 +580,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 🟡 SERVICIO EN CURSO
                             </p>
 
-                            {activeService ? (
+                            {assignedService ? (
                                 <div style={{
                                     background: 'rgba(255,255,255,0.05)',
                                     padding: '16px',
@@ -581,22 +591,22 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                 }}>
                                     <div style={{ marginBottom: '10px' }}>
                                         <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
-                                        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', marginTop: '2px', wordBreak: 'break-word' }}>{activeService.location?.split('| GPS:')[0]}</p>
+                                        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#fff', marginTop: '2px', wordBreak: 'break-word' }}>{assignedService.location?.split('| GPS:')[0]}</p>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '20px' }}>
+                                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                                         <div>
                                             <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Tipo:</label>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>{activeService.type}</p>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>{assignedService.type}</p>
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Iniciado:</label>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{activeService.accepted_time}</p>
+                                            <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Asignado a las:</label>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{assignedService.assigned_at || assignedService.time}</p>
                                         </div>
                                     </div>
 
-                                    {activeService.location?.includes('GPS: ') && (
+                                    {assignedService.location?.includes('GPS: ') && (
                                         <button
-                                            onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')}
+                                            onClick={() => window.open(assignedService.location.split('GPS: ')[1], '_blank')}
                                             className="glass-button"
                                             style={{
                                                 marginTop: '16px', width: '100%',
@@ -653,10 +663,10 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                             .eq('id', activeRecord.id);
                                     }
 
-                                    // Cambiar estado a Disponible de nuevo
+                                    // Limpiar assigned_service y cambiar estado a Disponible
                                     await supabase
                                         .from('drivers')
-                                        .update({ status: 'Disponible' })
+                                        .update({ status: 'Disponible', assigned_service: null })
                                         .eq('id', currentUser.id);
 
                                     // Aviso al admin
