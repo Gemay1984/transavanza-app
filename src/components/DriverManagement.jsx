@@ -453,125 +453,138 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                 </div>
 
                 {/* Solicitudes de Servicio (Solo para Conductores Disponibles) */}
-                {!isAdmin && currentUser && (
-                    <div style={{ marginTop: '32px' }}>
-                        <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <BellRing size={20} color="var(--warning)" />
-                            Servicios Disponibles
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {serviceRequests.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
-                                    No hay solicitudes de servicio en este momento.
-                                </div>
-                            ) : (
-                                serviceRequests.map(req => (
-                                    <div key={req.id} style={{
-                                        background: 'rgba(255,255,255,0.02)',
-                                        border: '1px solid var(--border-glass)',
-                                        borderRadius: '12px',
-                                        padding: '16px',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                                <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>{req.type}</span>
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{req.time}</span>
-                                            </div>
-                                            <h4 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{req.location.split('| GPS:')[0]}</h4>
+                {!isAdmin && currentUser && (() => {
+                    const currentDriver = drivers.find(d => d.id === currentUser.id);
+                    if (currentDriver?.status === 'En Servicio') return null;
 
-                                            {req.location.includes('GPS: ') && (
+                    return (
+                        <div style={{ marginTop: '32px' }}>
+                            <h3 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <BellRing size={20} color="var(--warning)" />
+                                Servicios Disponibles
+                            </h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {serviceRequests.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                                        No hay solicitudes de servicio en este momento.
+                                    </div>
+                                ) : (
+                                    serviceRequests.map(req => (
+                                        <div key={req.id} style={{
+                                            background: 'rgba(255,255,255,0.02)',
+                                            border: '1px solid var(--border-glass)',
+                                            borderRadius: '12px',
+                                            padding: '16px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                    <span style={{ background: 'var(--accent-gradient)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>{req.type}</span>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{req.time}</span>
+                                                </div>
+                                                <h4 style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{req.location.split('| GPS:')[0]}</h4>
+
+                                                {req.location.includes('GPS: ') && (
+                                                    <button
+                                                        onClick={() => window.open(req.location.split('GPS: ')[1], '_blank')}
+                                                        style={{
+                                                            marginTop: '8px', padding: '6px 12px', fontSize: '0.85rem',
+                                                            background: 'rgba(9, 132, 227, 0.1)', border: '1px solid var(--accent-secondary)',
+                                                            color: 'var(--accent-secondary)', borderRadius: '6px', cursor: 'pointer',
+                                                            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500'
+                                                        }}
+                                                    >
+                                                        <Navigation size={14} /> 🗺️ Navegar a ruta
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', alignItems: 'flex-end' }}>
                                                 <button
-                                                    onClick={() => window.open(req.location.split('GPS: ')[1], '_blank')}
-                                                    style={{
-                                                        marginTop: '8px', padding: '6px 12px', fontSize: '0.85rem',
-                                                        background: 'rgba(9, 132, 227, 0.1)', border: '1px solid var(--accent-secondary)',
-                                                        color: 'var(--accent-secondary)', borderRadius: '6px', cursor: 'pointer',
-                                                        display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500'
+                                                    className="glass-button success"
+                                                    style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                                                    onClick={async () => {
+                                                        const currentDriverState = drivers.find(d => d.id === currentUser.id);
+                                                        if (!currentDriverState || currentDriverState.status !== 'Disponible') {
+                                                            alert("Solo puedes aceptar servicios si tu estado es 'Disponible'. Por favor, cambia tu estado primero.");
+                                                            return;
+                                                        }
+
+                                                        // Cambiar estado del conductor a 'En Servicio'
+                                                        await supabase
+                                                            .from('drivers')
+                                                            .update({ status: 'En Servicio' })
+                                                            .eq('id', currentUser.id);
+
+                                                        // Avisar al administrador con todos los detalles
+                                                        const clientNameForMsg = req.location.match(/\(Ref: (.*?) -/)?.[1]?.trim();
+                                                        const cleanLocForMsg = req.location.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0].trim();
+                                                        await supabase
+                                                            .from('messages')
+                                                            .insert([{
+                                                                text: `✅ ${currentUser.name} ACEPTÓ el servicio\n${clientNameForMsg ? `👤 Pasajero: ${clientNameForMsg}\n` : ''}📍 ${cleanLocForMsg}\n🚗 Tipo: ${req.type}`,
+                                                                sender: "Sistema",
+                                                                recipient: "Administrador",
+                                                                time: new Date().toLocaleTimeString()
+                                                            }]);
+
+                                                        // Variables para notificar al cliente (si aplica)
+                                                        let clientName = null;
+                                                        const refMatch = req.location.match(/\(Ref: (.*?) -/);
+                                                        if (refMatch && refMatch[1]) {
+                                                            clientName = refMatch[1].trim();
+                                                        }
+
+                                                        // Guardar registro historico con nombre del pasajero
+                                                        await supabase
+                                                            .from('completed_services')
+                                                            .insert([{
+                                                                type: req.type,
+                                                                location: req.location,
+                                                                driver_name: currentUser.name,
+                                                                passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
+                                                                accepted_time: new Date().toLocaleTimeString()
+                                                            }]);
+
+                                                        // Eliminar solicitud de la cola
+                                                        await supabase
+                                                            .from('service_requests')
+                                                            .delete()
+                                                            .eq('id', req.id);
+
+                                                        // Alertar al pasajero/cliente si extrajimos su nombre
+                                                        if (clientName) {
+                                                            await supabase.from('messages').insert([{
+                                                                text: `🚗 ¡CONDUCTOR ASIGNADO!\nConductor: ${currentUser.name}\nPlaca: ${currentDriverState.vehicle}`,
+                                                                sender: "Sistema",
+                                                                recipient: clientName,
+                                                                time: new Date().toLocaleTimeString()
+                                                            }]);
+                                                        }
+
+                                                        // Mensaje directo al conductor de respaldo (Para la tarjeta "Servicio en Curso")
+                                                        const cleanLocBackup = req.location.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0].trim();
+                                                        await supabase.from('messages').insert([{
+                                                            text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\n${clientName ? `👤 Pasajero: ${clientName}\n` : ''}📍 Recogida: ${cleanLocBackup}\n🚗 Tipo: ${req.type}\n🕐 Hora: ${req.time}`,
+                                                            sender: "Sistema",
+                                                            recipient: currentUser.name,
+                                                            time: new Date().toLocaleTimeString()
+                                                        }]);
+
+                                                        alert(`¡Has aceptado el servicio en ${req.location}!\nTu estado cambió a "En Servicio".`);
                                                     }}
                                                 >
-                                                    <Navigation size={14} /> 🗺️ Navegar a ruta
+                                                    <CheckCircle size={16} /> Aceptar
                                                 </button>
-                                            )}
+                                            </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                            <button
-                                                className="glass-button success"
-                                                style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-                                                onClick={async () => {
-                                                    const currentDriverState = drivers.find(d => d.id === currentUser.id);
-                                                    if (!currentDriverState || currentDriverState.status !== 'Disponible') {
-                                                        alert("Solo puedes aceptar servicios si tu estado es 'Disponible'. Por favor, cambia tu estado primero.");
-                                                        return;
-                                                    }
-
-                                                    // Cambiar estado del conductor a 'En Servicio'
-                                                    await supabase
-                                                        .from('drivers')
-                                                        .update({ status: 'En Servicio' })
-                                                        .eq('id', currentUser.id);
-
-                                                    // Avisar al administrador con todos los detalles
-                                                    const clientNameForMsg = req.location.match(/\(Ref: (.*?) -/)?.[1]?.trim();
-                                                    const cleanLocForMsg = req.location.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0].trim();
-                                                    await supabase
-                                                        .from('messages')
-                                                        .insert([{
-                                                            text: `✅ ${currentUser.name} ACEPTÓ el servicio\n${clientNameForMsg ? `👤 Pasajero: ${clientNameForMsg}\n` : ''}📍 ${cleanLocForMsg}\n🚗 Tipo: ${req.type}`,
-                                                            sender: "Sistema",
-                                                            recipient: "Administrador",
-                                                            time: new Date().toLocaleTimeString()
-                                                        }]);
-
-                                                    // Variables para notificar al cliente (si aplica)
-                                                    let clientName = null;
-                                                    const refMatch = req.location.match(/\(Ref: (.*?) -/);
-                                                    if (refMatch && refMatch[1]) {
-                                                        clientName = refMatch[1].trim();
-                                                    }
-
-                                                    // Guardar registro historico con nombre del pasajero
-                                                    await supabase
-                                                        .from('completed_services')
-                                                        .insert([{
-                                                            type: req.type,
-                                                            location: req.location,
-                                                            driver_name: currentUser.name,
-                                                            passenger_name: clientName || req.location.split('(Ref:')[0].trim().split('|')[0].trim() || 'Sin nombre registrado',
-                                                            accepted_time: new Date().toLocaleTimeString(),
-                                                            start_timestamp: new Date().toISOString()
-                                                        }]);
-
-                                                    // Eliminar solicitud de la cola
-                                                    await supabase
-                                                        .from('service_requests')
-                                                        .delete()
-                                                        .eq('id', req.id);
-
-                                                    // Alertar al pasajero/cliente si extrajimos su nombre
-                                                    if (clientName) {
-                                                        await supabase.from('messages').insert([{
-                                                            text: `🚗 ¡CONDUCTOR ASIGNADO!\nConductor: ${currentUser.name}\nPlaca: ${currentDriverState.vehicle}`,
-                                                            sender: "Sistema",
-                                                            recipient: clientName,
-                                                            time: new Date().toLocaleTimeString()
-                                                        }]);
-                                                    }
-
-                                                    alert(`¡Has aceptado el servicio en ${req.location}!\nTu estado cambió a "En Servicio".`);
-                                                }}
-                                            >
-                                                <CheckCircle size={16} /> Aceptar
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
 
 
