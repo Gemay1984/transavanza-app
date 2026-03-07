@@ -1,9 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { BellRing, MessageSquare, Send, CheckCircle, Navigation, Plus, BarChart2, Filter, Users, Truck } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../supabaseClient';
 import PassengerRegistration from './PassengerRegistration';
+
+function MapRefocus({ position }) {
+    const map = useMap();
+    useEffect(() => {
+        if (position) {
+            map.flyTo(position, 16, { animate: true, duration: 1.5 });
+        } else {
+            map.flyTo([4.6097, -74.0817], 13, { animate: true, duration: 1.5 });
+        }
+    }, [position, map]);
+    return null;
+}
 
 export default function AdminDashboard({ drivers, setDrivers, serviceRequests, setServiceRequests, messages, setMessages, currentUser }) {
     const [newMessage, setNewMessage] = useState("");
@@ -12,7 +24,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     const [completedServices, setCompletedServices] = useState([]);
     const [filterDriver, setFilterDriver] = useState('');
     const [filterType, setFilterType] = useState('');
-    const [searchPlate, setSearchPlate] = useState('');
+    const [selectedDriverId, setSelectedDriverId] = useState('');
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
@@ -80,9 +92,13 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
         .filter(s => !filterDriver || s.driver_name === filterDriver)
         .filter(s => !filterType || s.type === filterType);
 
-    const displayedMapDrivers = drivers.filter(d => 
-        !searchPlate || (d.vehicle && d.vehicle.toLowerCase().includes(searchPlate.toLowerCase()))
-    );
+    const displayedMapDrivers = selectedDriverId
+        ? drivers.filter(d => String(d.id) === String(selectedDriverId))
+        : drivers;
+
+    const mapCenter = selectedDriverId && displayedMapDrivers.length > 0
+        ? [displayedMapDrivers[0].lat || 4.6097, displayedMapDrivers[0].lng || -74.0817]
+        : null;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -120,14 +136,19 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                 Seguimiento GPS en Tiempo Real
                             </h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <input 
-                                    type="text" 
+                                <select 
                                     className="glass-input" 
-                                    placeholder="Buscar por placa..." 
-                                    value={searchPlate}
-                                    onChange={e => setSearchPlate(e.target.value)}
-                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '200px' }}
-                                />
+                                    value={selectedDriverId}
+                                    onChange={e => setSelectedDriverId(e.target.value)}
+                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '250px' }}
+                                >
+                                    <option value="" style={{ background: 'var(--bg-primary)' }}>Todos los conductores</option>
+                                    {drivers.map(d => (
+                                        <option key={d.id} value={d.id} style={{ background: 'var(--bg-primary)' }}>
+                                            {d.name} ({d.vehicle})
+                                        </option>
+                                    ))}
+                                </select>
                                 <div style={{ display: 'flex', gap: '12px', fontSize: '0.9rem' }}>
                                     <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}></span>
@@ -149,6 +170,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                             position: 'relative'
                         }}>
                             <MapContainer center={[4.6097, -74.0817]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                                <MapRefocus position={mapCenter} />
                                 <TileLayer
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
