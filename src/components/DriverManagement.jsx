@@ -8,6 +8,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
     const [newMessage, setNewMessage] = useState("");
     const [driverHistory, setDriverHistory] = useState([]);
     const chatContainerRef = useRef(null);
+    const messagesEndRef = useRef(null);
     const [expandedDriverId, setExpandedDriverId] = useState(null);
 
     useEffect(() => {
@@ -275,22 +276,83 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                 </div>
             ) : (
                 <>
-                    {locationPermission !== 'granted' && (
-                        <div className="glass-panel" style={{ gridColumn: '1 / -1', background: 'rgba(255,118,117,0.1)', border: '1px solid var(--danger)', padding: '24px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--danger)', marginBottom: '16px' }}>
-                                <ShieldAlert size={24} />
-                                <h3 style={{ fontWeight: 600, margin: 0 }}>Permisos de Rastreo Requeridos</h3>
+                    {/* Tarjeta de Perfil del Conductor */}
+                    {(() => {
+                        const myDriver = drivers.find(d => d.id === currentUser?.id) || drivers.find(d => d.name === currentUser?.name);
+                        const initials = (currentUser?.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                        const statusColors = {
+                            'Disponible': { bg: 'rgba(0,184,148,0.12)', border: '#00b894', color: '#00b894', label: '🟢 Disponible' },
+                            'En Servicio': { bg: 'rgba(253,203,110,0.12)', border: '#fdcb6e', color: '#fdcb6e', label: '🟡 En Servicio' },
+                            'Ocupado': { bg: 'rgba(255,118,117,0.12)', border: '#ff7675', color: '#ff7675', label: '🔴 Ocupado' },
+                        };
+                        const st = statusColors[myDriver?.status] || statusColors['Disponible'];
+                        return (
+                            <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {/* Avatar + nombre */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <div style={{
+                                        width: '80px', height: '80px', borderRadius: '50%',
+                                        background: 'var(--accent-gradient)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '2rem', fontWeight: 800, color: '#fff',
+                                        boxShadow: '0 0 0 4px rgba(108,92,231,0.25), 0 8px 24px rgba(0,0,0,0.3)'
+                                    }}>
+                                        {initials}
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '4px' }}>{currentUser?.name}</h3>
+                                        <span style={{
+                                            fontSize: '0.8rem', padding: '3px 12px', borderRadius: '20px',
+                                            background: st.bg, border: `1px solid ${st.border}`, color: st.color, fontWeight: 600
+                                        }}>
+                                            {st.label}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Info del conductor */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Placa</span>
+                                        <span style={{ fontWeight: 700, fontSize: '1rem', letterSpacing: '1px', color: 'var(--accent-secondary)' }}>{myDriver?.vehicle || '—'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Teléfono</span>
+                                        <span style={{ fontWeight: 500, fontSize: '0.95rem' }}>{myDriver?.phone || 'No registrado'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Usuario</span>
+                                        <span style={{ fontWeight: 500, fontSize: '0.95rem', color: 'var(--text-secondary)' }}>@{myDriver?.username || currentUser?.username || '—'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>GPS</span>
+                                        <span style={{
+                                            fontWeight: 600, fontSize: '0.85rem',
+                                            color: locationPermission === 'granted' ? '#00b894' : '#ff7675'
+                                        }}>
+                                            {locationPermission === 'granted' ? '✅ Activo' : '❌ Sin permiso'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Botón GPS si no está concedido */}
+                                {locationPermission !== 'granted' && (
+                                    <div style={{ marginTop: '4px', padding: '16px', background: 'rgba(255,118,117,0.08)', border: '1px solid var(--danger)', borderRadius: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--danger)', marginBottom: '12px' }}>
+                                            <ShieldAlert size={20} />
+                                            <strong style={{ fontSize: '0.9rem' }}>Rastreo GPS Requerido</strong>
+                                        </div>
+                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+                                            Tu ubicación es necesaria para recibir servicios. Mantén la app abierta mientras operas.
+                                        </p>
+                                        <button className="glass-button" onClick={requestGPSPermission} style={{ width: '100%', borderColor: 'var(--danger)', padding: '12px', fontSize: '1rem' }}>
+                                            📍 Activar Rastreo GPS
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
-                                El administrador necesita tu ubicación en tiempo real para asignarte servicios. Por favor autoriza el uso de GPS.
-                                <br /><br />
-                                <strong style={{ color: 'var(--warning)' }}>Nota importante:</strong> Mantén esta pestaña abierta y en primer plano para asegurar que el sistema actualice tu posición sin interrupciones.
-                            </p>
-                            <button className="glass-button" onClick={requestGPSPermission} style={{ width: '100%', borderColor: 'var(--danger)', padding: '16px', fontSize: '1.1rem' }}>
-                                Permitir Rastreo GPS
-                            </button>
-                        </div>
-                    )}
+                        );
+                    })()}
                 </>
             )}
 
