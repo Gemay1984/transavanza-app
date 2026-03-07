@@ -12,6 +12,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
     const [completedServices, setCompletedServices] = useState([]);
     const [filterDriver, setFilterDriver] = useState('');
     const [filterType, setFilterType] = useState('');
+    const [searchPlate, setSearchPlate] = useState('');
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
@@ -79,6 +80,10 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
         .filter(s => !filterDriver || s.driver_name === filterDriver)
         .filter(s => !filterType || s.type === filterType);
 
+    const displayedMapDrivers = drivers.filter(d => 
+        !searchPlate || (d.vehicle && d.vehicle.toLowerCase().includes(searchPlate.toLowerCase()))
+    );
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
 
@@ -109,20 +114,30 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
 
                     {/* Mapa Simulado / Seguimiento GPS */}
                     <div className="glass-panel" style={{ padding: '24px', height: '350px', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                                 <Navigation size={20} color="var(--accent-secondary)" />
                                 Seguimiento GPS en Tiempo Real
                             </h3>
-                            <div style={{ display: 'flex', gap: '12px', fontSize: '0.9rem' }}>
-                                <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}></span>
-                                    {activeDrivers.length} Disponibles
-                                </span>
-                                <span style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)' }}></span>
-                                    {occupiedDrivers.length} Ocupados
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <input 
+                                    type="text" 
+                                    className="glass-input" 
+                                    placeholder="Buscar por placa..." 
+                                    value={searchPlate}
+                                    onChange={e => setSearchPlate(e.target.value)}
+                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '200px' }}
+                                />
+                                <div style={{ display: 'flex', gap: '12px', fontSize: '0.9rem' }}>
+                                    <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}></span>
+                                        {activeDrivers.length} Disponibles
+                                    </span>
+                                    <span style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--danger)' }}></span>
+                                        {occupiedDrivers.length} Ocupados
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -138,7 +153,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                                 />
-                                {drivers.map(driver => (
+                                {displayedMapDrivers.map(driver => (
                                     <Marker
                                         key={driver.id}
                                         position={[driver.lat || 4.6097, driver.lng || -74.0817]}
