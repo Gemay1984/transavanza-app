@@ -676,21 +676,41 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                     textAlign: 'left'
                                 }}>
                                     {/* Si tenemos el registro estructurado, mostrarlo */}
-                                    {activeService ? (
+                                    {activeService ? (() => {
+                                        // Extraer datos robustamente desde activeService.location
+                                        const locString = activeService.location || '';
+                                        
+                                        // Extraer Telefono (cualquier cosa despues de un guion dentro de parentesis Ref)
+                                        let phone = null;
+                                        const phoneMatch = locString.match(/- (.*?)\)/);
+                                        if (phoneMatch && phoneMatch[1] && phoneMatch[1].trim() !== 'Sin tel.' && phoneMatch[1].trim() !== 'Servicio') {
+                                            phone = phoneMatch[1].trim();
+                                        }
+
+                                        // Extraer link GPS exacto
+                                        let gpsLink = null;
+                                        if (locString.includes('GPS: ')) {
+                                            gpsLink = locString.split('GPS: ')[1].trim();
+                                        }
+
+                                        // Limpiar la direccion mostrada (quitar "(Ref:...)" y quitar la seccion de GPS)
+                                        let cleanAddress = locString.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0].trim();
+
+                                        return (
                                         <>
                                             {activeService.passenger_name && (
                                                 <div style={{ marginBottom: '10px' }}>
                                                     <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Pasajero:</label>
                                                     <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>👤 {activeService.passenger_name}</p>
-                                                    {activeService.location?.match(/- (.*?)\)/) && activeService.location.match(/- (.*?)\)/)[1].trim() !== 'Sin tel.' && activeService.location.match(/- (.*?)\)/)[1].trim() !== 'Servicio' && (
-                                                        <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--success)', marginTop: '4px' }}>📞 {activeService.location.match(/- (.*?)\)/)[1].trim()}</p>
+                                                    {phone && (
+                                                        <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--success)', marginTop: '4px' }}>📞 {phone}</p>
                                                     )}
                                                 </div>
                                             )}
                                             <div style={{ marginBottom: '10px' }}>
                                                 <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida (Dirección):</label>
-                                                <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px', borderLeft: '3px solid var(--warning)' }}>
-                                                    📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0]?.trim()}
+                                                <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', borderLeft: '4px solid var(--warning)' }}>
+                                                    📍 {cleanAddress}
                                                 </p>
                                             </div>
                                             <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '10px' }}>
@@ -703,17 +723,18 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                     <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🕐 {activeService.accepted_time}</p>
                                                 </div>
                                             </div>
-                                            {activeService.location?.includes('GPS: ') && (
+                                            {gpsLink && (
                                                 <button
-                                                    onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')}
+                                                    onClick={() => window.open(gpsLink, '_blank')}
                                                     className="glass-button"
-                                                    style={{ marginTop: '8px', width: '100%', background: 'var(--accent-gradient)', border: 'none', padding: '12px', fontSize: '1rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(108, 92, 231, 0.4)' }}
+                                                    style={{ marginTop: '8px', width: '100%', background: 'var(--accent-gradient)', border: 'none', padding: '14px', fontSize: '1.05rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(108, 92, 231, 0.4)' }}
                                                 >
-                                                    <Navigation size={18} /> Abrir GPS / Mapa
+                                                    <Navigation size={20} /> Abrir GPS / Mapa
                                                 </button>
                                             )}
                                         </>
-                                    ) : serviceMsg ? (
+                                        );
+                                    })() : serviceMsg ? (
                                         /* Si solo tenemos el mensaje, mostrarlo completo */
                                         <>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
