@@ -76,25 +76,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
         }
     }, [currentUser, isAdmin]);
 
-    // Recargar historial cuando el conductor pasa a 'En Servicio' (asignación del admin o aceptación propia)
-    useEffect(() => {
-        if (!isAdmin && currentUser?.name) {
-            const currentDriverStatus = drivers.find(d => d.id === currentUser.id)?.status;
-            if (currentDriverStatus === 'En Servicio') {
-                // Esperar 500ms para que Supabase registre el insert antes de consultar
-                const timer = setTimeout(async () => {
-                    const { data } = await supabase
-                        .from('completed_services')
-                        .select('*')
-                        .eq('driver_name', currentUser.name)
-                        .order('id', { ascending: false })
-                        .limit(30);
-                    if (data) setDriverHistory(data);
-                }, 700);
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [drivers, currentUser, isAdmin]);
+    // El historial se recarga en tiempo real gracias al canal supabase.channel('driver_history_updates')
 
     // Wake Lock para evitar que la pantalla se apague y corte el GPS
     useEffect(() => {
