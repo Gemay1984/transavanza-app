@@ -593,12 +593,18 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
 
                                                         // Variables para notificar al cliente (si aplica)
                                                         let clientName = null;
+                                                        let clientPhone = null;
                                                         const refMatch = req.location.match(/\(Ref: (.*?) -/);
                                                         if (refMatch && refMatch[1]) {
                                                             clientName = refMatch[1].trim();
                                                         }
+                                                        const phoneMatch = req.location.match(/- (.*?)\)/);
+                                                        if (phoneMatch && phoneMatch[1]) {
+                                                            clientPhone = phoneMatch[1].trim();
+                                                        }
 
-                                                        // Guardar registro historico con nombre del pasajero
+                                                        // Guardar registro historico con nombre del pasajero y telefono si esta disponible
+                                                        // Limpiar la locacion para guardar sin la Ref (aunque se puede quedar, lo guardamos como viene)
                                                         await supabase
                                                             .from('completed_services')
                                                             .insert([{
@@ -627,8 +633,9 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
 
                                                         // Mensaje directo al conductor de respaldo (Para la tarjeta "Servicio en Curso")
                                                         const cleanLocBackup = req.location.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0].trim();
+                                                        const backupGpsLink = req.location.includes('GPS: ') ? `\n📍 GPS: ${req.location.split('GPS: ')[1].trim()}` : '';
                                                         await supabase.from('messages').insert([{
-                                                            text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\n${clientName ? `👤 Pasajero: ${clientName}\n` : ''}📍 Recogida: ${cleanLocBackup}\n🚗 Tipo: ${req.type}\n🕐 Hora: ${req.time}`,
+                                                            text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\n${clientName ? `👤 Pasajero: ${clientName}\n` : ''}${clientPhone && clientPhone !== 'Sin tel.' && clientPhone !== 'Servicio' ? `📞 Tel: ${clientPhone}\n` : ''}📍 Recogida: ${cleanLocBackup}${backupGpsLink}\n🚗 Tipo: ${req.type}\n🕐 Hora: ${req.time}\n\nNota: La direccion completa es: ${cleanLocBackup}`,
                                                             sender: "Sistema",
                                                             recipient: currentUser.name,
                                                             time: new Date().toLocaleTimeString()
@@ -693,11 +700,16 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 <div style={{ marginBottom: '10px' }}>
                                                     <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Pasajero:</label>
                                                     <p style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>👤 {activeService.passenger_name}</p>
+                                                    {activeService.location?.match(/- (.*?)\)/) && activeService.location.match(/- (.*?)\)/)[1].trim() !== 'Sin tel.' && activeService.location.match(/- (.*?)\)/)[1].trim() !== 'Servicio' && (
+                                                        <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--success)', marginTop: '4px' }}>📞 {activeService.location.match(/- (.*?)\)/)[1].trim()}</p>
+                                                    )}
                                                 </div>
                                             )}
                                             <div style={{ marginBottom: '10px' }}>
-                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida:</label>
-                                                <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word' }}>📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0]?.trim()}</p>
+                                                <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Punto de Recogida (Dirección):</label>
+                                                <p style={{ fontSize: '0.95rem', color: '#e9edef', marginTop: '2px', wordBreak: 'break-word', background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px', borderLeft: '3px solid var(--warning)' }}>
+                                                    📍 {activeService.location?.replace(/\(Ref:.*?\)\s*/, '').split('| GPS:')[0]?.trim()}
+                                                </p>
                                             </div>
                                             <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '10px' }}>
                                                 <div>
@@ -705,7 +717,7 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                     <p style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>🚗 {activeService.type}</p>
                                                 </div>
                                                 <div>
-                                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Hora:</label>
+                                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Hora Asignada:</label>
                                                     <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>🕐 {activeService.accepted_time}</p>
                                                 </div>
                                             </div>
@@ -713,9 +725,9 @@ export default function DriverManagement({ drivers, setDrivers, currentUser, isA
                                                 <button
                                                     onClick={() => window.open(activeService.location.split('GPS: ')[1], '_blank')}
                                                     className="glass-button"
-                                                    style={{ marginTop: '8px', width: '100%', background: 'var(--accent-gradient)', border: 'none', padding: '10px', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                                    style={{ marginTop: '8px', width: '100%', background: 'var(--accent-gradient)', border: 'none', padding: '12px', fontSize: '1rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(108, 92, 231, 0.4)' }}
                                                 >
-                                                    <Navigation size={16} /> Abrir GPS / Mapa
+                                                    <Navigation size={18} /> Abrir GPS / Mapa
                                                 </button>
                                             )}
                                         </>

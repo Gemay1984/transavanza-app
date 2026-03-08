@@ -319,11 +319,17 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                         if (driverToAssign) {
                                                             // Extraer nombre del pasajero si está en la location
                                                             let clientName = null;
+                                                            let clientPhone = null;
                                                             const refMatch = req.location.match(/\(Ref: (.*?) -/);
                                                             if (refMatch && refMatch[1]) {
                                                                 clientName = refMatch[1].trim();
                                                             }
-                                                            const cleanLocation = req.location.replace(/\(Ref:.*?\)\s*/, '').trim();
+                                                            const phoneMatch = req.location.match(/- (.*?)\)/);
+                                                            if (phoneMatch && phoneMatch[1]) {
+                                                                clientPhone = phoneMatch[1].trim();
+                                                            }
+                                                            const cleanLocation = req.location.replace(/\(Ref:.*?\)\s*/, '').split('|')[0].trim();
+                                                            const backupGpsLink = req.location.includes('GPS: ') ? `\n📍 GPS: ${req.location.split('GPS: ')[1].trim()}` : '';
 
                                                             // PASO 1: Guardar en historial ANTES de cambiar estado (evita race condition)
                                                             await supabase
@@ -332,7 +338,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                                     type: req.type,
                                                                     location: req.location,
                                                                     driver_name: driverToAssign.name,
-                                                                    passenger_name: clientName || cleanLocation.split('|')[0].trim() || 'Sin nombre',
+                                                                    passenger_name: clientName || cleanLocation || 'Sin nombre',
                                                                     accepted_time: new Date().toLocaleTimeString(),
                                                                     start_timestamp: new Date().toISOString()
                                                                 }]);
@@ -353,7 +359,7 @@ export default function AdminDashboard({ drivers, setDrivers, serviceRequests, s
                                                             await supabase
                                                                 .from('messages')
                                                                 .insert([{
-                                                                    text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\n${clientName ? `👤 Pasajero: ${clientName}\n` : ''}📍 Recogida: ${cleanLocation}\n🚗 Tipo: ${req.type}\n🕐 Hora: ${req.time}`,
+                                                                    text: `🚨 ¡NUEVO SERVICIO ASIGNADO! 🚨\n${clientName ? `👤 Pasajero: ${clientName}\n` : ''}${clientPhone && clientPhone !== 'Sin tel.' && clientPhone !== 'Servicio' ? `📞 Tel: ${clientPhone}\n` : ''}📍 Recogida: ${cleanLocation}${backupGpsLink}\n🚗 Tipo: ${req.type}\n🕐 Hora: ${req.time}\n\nNota: La direccion completa es: ${cleanLocation}`,
                                                                     sender: "Administrador",
                                                                     recipient: driverToAssign.name,
                                                                     time: new Date().toLocaleTimeString()
